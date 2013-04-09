@@ -16,17 +16,16 @@ public class Commit {
 	private Logger logger;
 	private FileDistiller distiller;
 	private Connection conn;
-	public HashMap<String, Integer> changeFrequency = new HashMap<String, Integer>();
+	public HashMap<String, Integer> changeFrequencies = new HashMap<String, Integer>();
 
 	public Commit(int commitID) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
 		distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 		conn = DatabaseManager.getConnection();
-		extractASTDelta();
 	}
 
-	private void extractASTDelta() {
+	public void extractASTDelta() throws Exception {
 		try {
 			Statement stmt = conn.createStatement();
 			ResultSet file = stmt.executeQuery("select * " + "from actions "
@@ -35,6 +34,9 @@ public class Commit {
 			while (file.next()) {
 				int fileID = file.getInt("file_id");
 				char actionType = file.getString("type").charAt(0);
+				logger.info("Extracting AST difference for file " + fileID + 
+						"@commit " + id + 
+						" with action type " + actionType);
 				switch (actionType) {
 				case 'C':
 					// the file is copied
@@ -53,8 +55,10 @@ public class Commit {
 					break;
 				}
 			}
+			stmt.close();
 		} catch (Exception e) {
-			logger.warning(e.toString());
+			logger.log(Level.WARNING, "Error in distilling commit " + id, e);
+			throw e;
 		}
 	}
 
@@ -64,7 +68,7 @@ public class Commit {
 			logger.warning("Content for file " + fileID + " at commit_id " + id
 					+ " not found");
 		String oldContent = getOldContent(fileID);
-		extractDiff(oldContent, newContent, fileID);
+		extractDiff(oldContent, newContent, fileID);			
 	}
 
 	private String getNewContent(int fileID) throws Exception {
@@ -98,36 +102,29 @@ public class Commit {
 	}
 
 	private void extractDiff(String oldContent, String newContent, int fileID) {
-		if (newContent == null) {
-			return;
-		}
-		if (oldContent == null) {
+		if (newContent == null || oldContent == null) {
 			return;
 		}
 
-		try {
-			File newFile = FileUtils.javaFileFromString("New", newContent);
-			File oldFile = FileUtils.javaFileFromString("Old", oldContent);
-			distiller.extractClassifiedSourceCodeChanges(oldFile, newFile,
-					"commit_id " + id);
+		File newFile = FileUtils.javaFileFromString("New", newContent);
+		File oldFile = FileUtils.javaFileFromString("Old", oldContent);
+		distiller.extractClassifiedSourceCodeChanges(oldFile, newFile,
+				"commit_id " + id);
 
-			List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
-			if (changes == null) {
-				logger.config("No diff of file " + fileID + " at commit " + id
-						+ " found");
-			} else {
-				for (SourceCodeChange c : changes) {
-					String category = c.getLabel();
-					Integer count = changeFrequency.get(category);
-					if (count == null) {
-						count = 0;
-					}
-					count++;
-					changeFrequency.put(category, count);
+		List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
+		if (changes == null) {
+			logger.config("No diff of file " + fileID + " at commit " + id
+					+ " found");
+		} else {
+			for (SourceCodeChange c : changes) {
+				String category = c.getLabel();
+				Integer count = changeFrequencies.get(category);
+				if (count == null) {
+					count = 0;
 				}
+				count++;
+				changeFrequencies.put(category, count);
 			}
-		} catch (Exception e) {
-			logger.warning(e.toString());
 		}
 	}
 

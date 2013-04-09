@@ -1,7 +1,6 @@
 package edu.ucsc.cs;
 
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -33,10 +32,9 @@ public class LogManager {
 					logger.setLevel(Level.CONFIG);
 				}
 				fis.close();
-			} catch (SecurityException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+				System.exit(1);
 			}
 		}
 		return logger;

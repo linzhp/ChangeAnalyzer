@@ -16,11 +16,13 @@ public class Commit {
 	private Logger logger;
 	private FileDistiller distiller;
 	private Connection conn;
+	private List<Integer> excludedFileIDs;
 	public HashMap<String, Integer> changeFrequencies = new HashMap<String, Integer>();
 
-	public Commit(int commitID) {
+	public Commit(int commitID, List<Integer> excludedFileIDs) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
+		this.excludedFileIDs = excludedFileIDs;
 		distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 		conn = DatabaseManager.getConnection();
 	}
@@ -33,6 +35,9 @@ public class Commit {
 					+ " and current_file_path like '%.java'");
 			while (file.next()) {
 				int fileID = file.getInt("file_id");
+				if (excludedFileIDs.contains(fileID)) {
+					continue;
+				}
 				char actionType = file.getString("type").charAt(0);
 				logger.info("Extracting AST difference for file " + fileID + 
 						"@commit " + id + 
@@ -68,7 +73,8 @@ public class Commit {
 			logger.warning("Content for file " + fileID + " at commit_id " + id
 					+ " not found");
 		String oldContent = getOldContent(fileID);
-		extractDiff(oldContent, newContent, fileID);			
+		extractDiff(oldContent, newContent, fileID);
+		FileContent.previousContent.put(fileID, new FileContent(id, newContent));
 	}
 
 	private String getNewContent(int fileID) throws Exception {
@@ -95,6 +101,7 @@ public class Commit {
 	private void processAdd(int fileID) throws Exception {
 		String newContent = getNewContent(fileID);
 		extractDiff("", newContent, fileID);
+		FileContent.previousContent.put(fileID, new FileContent(id, newContent));
 	}
 
 	private void processRename(int fileID) throws Exception {
@@ -128,20 +135,14 @@ public class Commit {
 		}
 	}
 
-	private String getOldContent(int fileID) throws Exception {
-		Statement stmt = conn.createStatement();
-		ResultSet rs = stmt.executeQuery("select content "
-				+ "from content where file_id=" + fileID + " and commit_id<"
-				+ this.id + " order by commit_id desc limit 1");
-		String result;
-		if (!rs.next()) {
-			logger.warning("No content for previous version of " + fileID
-					+ " at commit_id " + id + " found");
-			result = null;
+	private String getOldContent(int fileID) {
+		FileContent content = FileContent.previousContent.get(fileID);
+		if(content == null) {
+			logger.info("No previous revision of file " + fileID + "found!");
+			return null;
 		} else {
-			result = rs.getString("content");
+			logger.info("Previous revision of file " + fileID + " found at commit " + content.commitID);
+			return content.content;
 		}
-		stmt.close();
-		return result;
 	}
 }

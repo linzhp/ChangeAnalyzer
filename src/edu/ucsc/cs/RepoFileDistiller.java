@@ -5,20 +5,24 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
+import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
+import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 
 public class RepoFileDistiller {
 	private ChangeReducer reducer;
 	private Logger logger;
 	private Connection conn;
+	private FileDistiller distiller;
 
 	public RepoFileDistiller(ChangeReducer reducer) {
 		this.reducer = reducer;
 		logger = LogManager.getLogger();
 		conn = DatabaseManager.getConnection();
+		distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 	}
 	
 	public void extractASTDelta(int fileID, int commitID, char actionType) throws Exception {
@@ -30,34 +34,34 @@ public class RepoFileDistiller {
 			// the file is copied
 			break;
 		case 'M':
-			processModify(fileID);
+			processModify(fileID, commitID);
 			break;
 		case 'D':
 			processDelete(fileID);
 			break;
 		case 'A':
-			processAdd(fileID);
+			processAdd(fileID, commitID);
 			break;
 		case 'V':
-			processRename(fileID);
+			processRename(fileID, commitID);
 			break;
 		}
 	}
 
-	private void processModify(int fileID) throws Exception {
-		String newContent = getNewContent(fileID);
+	private void processModify(int fileID, int commitID) throws Exception {
+		String newContent = getNewContent(fileID, commitID);
 		if (newContent == null)
-			logger.warning("Content for file " + fileID + " at commit_id " + id
+			logger.warning("Content for file " + fileID + " at commit_id " + commitID
 					+ " not found");
 		String oldContent = getOldContent(fileID);
-		extractDiff(oldContent, newContent, fileID);
-		FileContent.previousContent.put(fileID, new FileContent(id, newContent));
+		extractDiff(oldContent, newContent);
+		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
 
-	private String getNewContent(int fileID) throws Exception {
+	private String getNewContent(int fileID, int commitID) throws Exception {
 		Statement stmt = conn.createStatement();
 		String query = "select content from content where file_id=" + fileID
-				+ " and commit_id=" + this.id;
+				+ " and commit_id=" + commitID;
 		logger.fine(query);
 		ResultSet rs = stmt.executeQuery(query);
 		String result;
@@ -72,43 +76,33 @@ public class RepoFileDistiller {
 
 	private void processDelete(int fileID) throws Exception {
 		String oldContent = getOldContent(fileID);
-		extractDiff(oldContent, "", fileID);
+		extractDiff(oldContent, "");
 	}
 
-	private void processAdd(int fileID) throws Exception {
-		String newContent = getNewContent(fileID);
-		extractDiff("", newContent, fileID);
-		FileContent.previousContent.put(fileID, new FileContent(id, newContent));
+	private void processAdd(int fileID, int commitID) throws Exception {
+		String newContent = getNewContent(fileID, commitID);
+		extractDiff("", newContent);
+		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
 
-	private void processRename(int fileID) throws Exception {
-		processModify(fileID);
+	private void processRename(int fileID, int commitID) throws Exception {
+		processModify(fileID, commitID);
 	}
 
-	private void extractDiff(String oldContent, String newContent, int fileID) {
+	private void extractDiff(String oldContent, String newContent) {
 		if (newContent == null || oldContent == null) {
 			return;
 		}
 
 		File newFile = FileUtils.javaFileFromString("New", newContent);
 		File oldFile = FileUtils.javaFileFromString("Old", oldContent);
-		distiller.extractClassifiedSourceCodeChanges(oldFile, newFile,
-				"commit_id " + id);
+		distiller.extractClassifiedSourceCodeChanges(oldFile, newFile);
 
 		List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
-		if (changes == null) {
-			logger.config("No diff of file " + fileID + " at commit " + id
-					+ " found");
+		if(changes == null) {
+			logger.info("No AST difference found");
 		} else {
-			for (SourceCodeChange c : changes) {
-				String category = c.getLabel();
-				Integer count = changeFrequencies.get(category);
-				if (count == null) {
-					count = 0;
-				}
-				count++;
-				changeFrequencies.put(category, count);
-			}
+			this.reducer.add(changes);			
 		}
 	}
 

@@ -24,14 +24,15 @@ public class Distribution {
 			int commitID = commitRS.getInt("commit_id");
 			Commit commit = new Commit(commitID, excludedFileIDs);
 			commit.extractASTDelta();
-			for (String changeType : commit.changeFrequencies.keySet()) {
+			HashMap<String, Integer> frequencies = commit.getFrequencies();
+			for (String changeType : frequencies.keySet()) {
 				if (changeFrequencies.containsKey(changeType)) {
 					changeFrequencies.put(changeType,
 							changeFrequencies.get(changeType)
-									+ commit.changeFrequencies.get(changeType));
+									+ frequencies.get(changeType));
 				} else {
 					changeFrequencies.put(changeType,
-							commit.changeFrequencies.get(changeType));
+							frequencies.get(changeType));
 				}
 			}
 		}
@@ -44,7 +45,7 @@ public class Distribution {
 	 */
 	public static void main(String[] args) throws Exception {
 //		Distribution dist = new Distribution(1, Arrays.asList(641, 1165)); // voldemort local
-		Distribution dist = new Distribution(2, new ArrayList<Integer>());
+		Distribution dist = new Distribution(9, new ArrayList<Integer>());
 		String[] changeTypes = dist.changeFrequencies.keySet().toArray(new String[0]);
 		Arrays.sort(changeTypes);
 		System.out.println("changeType,freq");

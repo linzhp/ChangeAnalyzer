@@ -1,6 +1,7 @@
 package edu.ucsc.cs;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -89,7 +90,7 @@ public class RepoFileDistiller {
 		processModify(fileID, commitID);
 	}
 
-	private void extractDiff(String oldContent, String newContent) {
+	private void extractDiff(String oldContent, String newContent) throws IOException {
 		if (newContent == null || oldContent == null) {
 			return;
 		}

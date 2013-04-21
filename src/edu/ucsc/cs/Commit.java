@@ -5,6 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.logging.*;
 
+import edu.ucsc.cs.utils.DatabaseManager;
+import edu.ucsc.cs.utils.LogManager;
+
 public class Commit {
 	private int id;
 	private Logger logger;

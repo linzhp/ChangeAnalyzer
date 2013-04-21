@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import edu.ucsc.cs.DatabaseManager;
+import edu.ucsc.cs.utils.DatabaseManager;
 
 public class Distribution {
 	public HashMap<String, Integer> changeFrequencies;

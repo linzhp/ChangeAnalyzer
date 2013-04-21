@@ -10,6 +10,8 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
+import edu.ucsc.cs.utils.FileUtils;
+
 public class JavaParser {
 	@Inject private ASTHelperFactory factory;
 	private ASTHelper<StructureNode> astHelper;

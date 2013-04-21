@@ -1,4 +1,4 @@
-package edu.ucsc.cs;
+package edu.ucsc.cs.utils;
 
 import java.io.FileInputStream;
 import java.util.Properties;

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.logging.Logger;
@@ -12,6 +13,9 @@ import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
 import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
+import edu.ucsc.cs.utils.DatabaseManager;
+import edu.ucsc.cs.utils.FileUtils;
+import edu.ucsc.cs.utils.LogManager;
 
 public class RepoFileDistiller {
 	private ChangeReducer reducer;
@@ -26,7 +30,7 @@ public class RepoFileDistiller {
 		distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 	}
 	
-	public void extractASTDelta(int fileID, int commitID, char actionType) throws Exception {
+	public void extractASTDelta(int fileID, int commitID, char actionType) throws SQLException, IOException  {
 		logger.info("Extracting AST difference for file " + fileID + 
 				"@commit " + commitID + 
 				" with action type " + actionType);
@@ -49,7 +53,7 @@ public class RepoFileDistiller {
 		}
 	}
 
-	private void processModify(int fileID, int commitID) throws Exception {
+	private void processModify(int fileID, int commitID) throws SQLException, IOException  {
 		String newContent = getNewContent(fileID, commitID);
 		if (newContent == null)
 			logger.warning("Content for file " + fileID + " at commit_id " + commitID
@@ -59,7 +63,7 @@ public class RepoFileDistiller {
 		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
 
-	private String getNewContent(int fileID, int commitID) throws Exception {
+	private String getNewContent(int fileID, int commitID) throws SQLException  {
 		Statement stmt = conn.createStatement();
 		String query = "select content from content where file_id=" + fileID
 				+ " and commit_id=" + commitID;
@@ -75,18 +79,18 @@ public class RepoFileDistiller {
 		return result;
 	}
 
-	private void processDelete(int fileID) throws Exception {
+	private void processDelete(int fileID) throws IOException {
 		String oldContent = getOldContent(fileID);
 		extractDiff(oldContent, "");
 	}
 
-	private void processAdd(int fileID, int commitID) throws Exception {
+	private void processAdd(int fileID, int commitID) throws IOException, SQLException {
 		String newContent = getNewContent(fileID, commitID);
 		extractDiff("", newContent);
 		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
 
-	private void processRename(int fileID, int commitID) throws Exception {
+	private void processRename(int fileID, int commitID) throws SQLException, IOException {
 		processModify(fileID, commitID);
 	}
 

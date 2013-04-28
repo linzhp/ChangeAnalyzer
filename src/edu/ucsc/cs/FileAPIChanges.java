@@ -11,9 +11,9 @@ import java.sql.Statement;
 
 import edu.ucsc.cs.utils.DatabaseManager;
 
-public class APIChangeDistribution {
+public class FileAPIChanges {
 
-	public APIChangeDistribution(int fileID, Writer writer) throws SQLException, IOException {
+	public FileAPIChanges(int fileID, Writer writer) throws SQLException, IOException {
 		RepoFileDistiller distiller = new RepoFileDistiller(new APIChangeExtractor(writer));
 		Connection conn = DatabaseManager.getConnection();
 		Statement stmt = conn.createStatement();
@@ -32,7 +32,7 @@ public class APIChangeDistribution {
 	 */
 	public static void main(String[] args) throws SQLException, IOException {
 		FileWriter writer = new FileWriter(new File("12246.csv"));
-		new APIChangeDistribution(12246, writer);
+		new FileAPIChanges(12246, writer);
 		writer.close();
 	}
 

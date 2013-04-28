@@ -1,7 +1,7 @@
 package edu.ucsc.cs;
 
+import java.io.IOException;
 import java.sql.*;
-import java.util.HashMap;
 import java.util.List;
 import java.util.logging.*;
 
@@ -14,13 +14,11 @@ public class Commit {
 	private Connection conn;
 	private List<Integer> excludedFileIDs;
 	private RepoFileDistiller distiller;
-	private BasicFreqCounter reducer;
-
-	public Commit(int commitID, List<Integer> excludedFileIDs) {
+	
+	public Commit(int commitID, List<Integer> excludedFileIDs, ChangeReducer reducer) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
 		this.excludedFileIDs = excludedFileIDs;
-		reducer = new BasicFreqCounter();
 		distiller = new RepoFileDistiller(reducer);
 		conn = DatabaseManager.getConnection();
 	}
@@ -40,13 +38,9 @@ public class Commit {
 				distiller.extractASTDelta(fileID, id, actionType);
 			}
 			stmt.close();
-		} catch (Exception e) {
+		} catch (IOException | SQLException e) {
 			logger.log(Level.WARNING, "Error in distilling commit " + id, e);
 			throw e;
-		}
-	}
-	
-	public HashMap<String, Integer> getFrequencies() {
-		return reducer.changeFrequencies;
+		} 
 	}
 }

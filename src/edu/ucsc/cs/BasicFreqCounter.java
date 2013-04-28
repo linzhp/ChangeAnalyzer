@@ -1,5 +1,7 @@
 package edu.ucsc.cs;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -19,6 +21,23 @@ public class BasicFreqCounter extends ChangeReducer {
 				count++;				
 			}
 			changeFrequencies.put(category, count);
+		}
+	}
+	
+
+	/**
+	 * @param args
+	 * @throws Exception 
+	 */
+	public static void main(String[] args) throws Exception {
+		BasicFreqCounter reducer = new BasicFreqCounter();
+//		Distribution dist = new Distribution(1, Arrays.asList(641, 1165)); // voldemort local
+		new Repository(9, new ArrayList<Integer>(), reducer);
+		String[] changeTypes = reducer.changeFrequencies.keySet().toArray(new String[0]);
+		Arrays.sort(changeTypes);
+		System.out.println("changeType,freq");
+		for(String changeType : changeTypes) {
+			System.out.println(changeType + ',' + reducer.changeFrequencies.get(changeType));
 		}
 	}
 }

@@ -42,10 +42,10 @@ public class RepoFileDistiller {
 			processModify(fileID, commitID);
 			break;
 		case 'D':
-			processDelete(fileID);
+			// a file is deleted
 			break;
 		case 'A':
-			processAdd(fileID, commitID);
+			// a file is added
 			break;
 		case 'V':
 			processRename(fileID, commitID);
@@ -79,16 +79,6 @@ public class RepoFileDistiller {
 		return result;
 	}
 
-	private void processDelete(int fileID) throws IOException {
-		String oldContent = getOldContent(fileID);
-		extractDiff(oldContent, "");
-	}
-
-	private void processAdd(int fileID, int commitID) throws IOException, SQLException {
-		String newContent = getNewContent(fileID, commitID);
-		extractDiff("", newContent);
-		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
-	}
 
 	private void processRename(int fileID, int commitID) throws SQLException, IOException {
 		processModify(fileID, commitID);

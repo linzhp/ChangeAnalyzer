@@ -47,9 +47,9 @@ public class APIChangeExtractor extends ChangeReducer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		FileWriter writer = new FileWriter(new File("argouml.csv"));
+		FileWriter writer = new FileWriter(new File(args[1]));
 		APIChangeExtractor reducer = new APIChangeExtractor(writer);
-		new Repository(2, new ArrayList<Integer>(), reducer);
+		new Repository(Integer.valueOf(args[0]), new ArrayList<Integer>(), reducer);
 		writer.close();
 	}
 }

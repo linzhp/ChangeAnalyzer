@@ -21,13 +21,11 @@ public class RepoFileDistiller {
 	private ChangeReducer reducer;
 	private Logger logger;
 	private Connection conn;
-	private FileDistiller distiller;
 
 	public RepoFileDistiller(ChangeReducer reducer) {
 		this.reducer = reducer;
 		logger = LogManager.getLogger();
 		conn = DatabaseManager.getConnection();
-		distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 	}
 	
 	public void extractASTDelta(int fileID, int commitID, char actionType) throws SQLException, IOException  {
@@ -43,14 +41,28 @@ public class RepoFileDistiller {
 			break;
 		case 'D':
 			// a file is deleted
+			processDelete(fileID, commitID);
 			break;
 		case 'A':
 			// a file is added
+			processAdd(fileID, commitID);
 			break;
 		case 'V':
 			processRename(fileID, commitID);
 			break;
 		}
+	}
+	
+	private void processDelete(int fileID, int commitID) {
+		FileContent.previousContent.remove(fileID);
+	}
+	
+	private void processAdd(int fileID, int commitID) throws SQLException {
+		String newContent = getNewContent(fileID, commitID);
+		if (newContent == null)
+			logger.warning("Content for file " + fileID + " at commit_id " + commitID
+					+ " not found");
+		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
 
 	private void processModify(int fileID, int commitID) throws SQLException, IOException  {
@@ -91,6 +103,7 @@ public class RepoFileDistiller {
 
 		File newFile = FileUtils.javaFileFromString("New", newContent);
 		File oldFile = FileUtils.javaFileFromString("Old", oldContent);
+		FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 		distiller.extractClassifiedSourceCodeChanges(oldFile, newFile);
 
 		List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
@@ -104,7 +117,7 @@ public class RepoFileDistiller {
 	private String getOldContent(int fileID) {
 		FileContent content = FileContent.previousContent.get(fileID);
 		if(content == null) {
-			logger.info("No previous revision of file " + fileID + "found!");
+			logger.info("No previous revision of file " + fileID + " found!");
 			return null;
 		} else {
 			logger.info("Previous revision of file " + fileID + " found at commit " + content.commitID);

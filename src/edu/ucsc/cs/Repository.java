@@ -21,6 +21,4 @@ public class Repository {
 		}
 		stmt.close();
 	}
-
-
 }

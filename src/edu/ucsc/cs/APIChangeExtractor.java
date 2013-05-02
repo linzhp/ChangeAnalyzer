@@ -3,8 +3,11 @@ package edu.ucsc.cs;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import ch.uzh.ifi.seal.changedistiller.model.entities.*;
+import edu.ucsc.cs.utils.LogManager;
 
 public class APIChangeExtractor extends ChangeReducer {
 	private Writer writer;
@@ -46,10 +49,15 @@ public class APIChangeExtractor extends ChangeReducer {
 		}
 	}
 
-	public static void main(String[] args) throws Exception {
-		FileWriter writer = new FileWriter(new File(args[1]));
-		APIChangeExtractor reducer = new APIChangeExtractor(writer);
-		new Repository(Integer.valueOf(args[0]), new ArrayList<Integer>(), reducer);
-		writer.close();
+	public static void main(String[] args) {
+		try {
+			FileWriter writer = new FileWriter(new File(args[1]));
+			APIChangeExtractor reducer = new APIChangeExtractor(writer);
+			new Repository(Integer.valueOf(args[0]), new ArrayList<Integer>(), reducer);
+			writer.close();			
+		} catch(Exception e) {
+			Logger logger = LogManager.getLogger();
+			logger.log(Level.SEVERE, e.toString());
+		}
 	}
 }

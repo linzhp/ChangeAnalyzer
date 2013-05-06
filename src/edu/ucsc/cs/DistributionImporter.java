@@ -9,7 +9,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 
-public class FrequencyImporter {
+public class DistributionImporter {
 
 	/**
 	 * @param args
@@ -18,19 +18,20 @@ public class FrequencyImporter {
 	public static void main(String[] args) throws IOException {
 		MongoClient mongo = new MongoClient();
 		DB db = mongo.getDB("Evolution");
-		DBCollection coll = db.getCollection("frequencies");
+		DBCollection coll = db.getCollection("distribution");
 		
-		BufferedReader br = new BufferedReader(new FileReader(args[0]));
+		BufferedReader br = new BufferedReader(new FileReader("../../analysis/" +
+				args[0] + "-api-freq.csv"));
 		String[] headers = br.readLine().split(","); // read header
 		for (String line = br.readLine(); line != null; line = br.readLine()) {
 			String[] record = line.split(",");
 			BasicDBObject query = new BasicDBObject();
-			int numCol = headers.length;
-			int i;
-			for (i = 0; i < numCol - 1; i++) {
+			for (int i = 0; i < 4; i++) {
 				query.append(headers[i], record[i]);
 			}
-			coll.update(query, new BasicDBObject("$set", new BasicDBObject(headers[i], record[i])), true, false);
+			coll.update(query, 
+					new BasicDBObject("$set", new BasicDBObject(args[0], record[5])), 
+					true, false);
 		}
 		br.close();
 	}

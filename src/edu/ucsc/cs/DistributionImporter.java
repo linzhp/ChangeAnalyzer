@@ -18,7 +18,7 @@ public class DistributionImporter {
 	public static void main(String[] args) throws IOException {
 		MongoClient mongo = new MongoClient();
 		DB db = mongo.getDB("Evolution");
-		DBCollection coll = db.getCollection("distribution");
+		DBCollection coll = db.getCollection("contingency");
 		
 		BufferedReader br = new BufferedReader(new FileReader("../../analysis/" +
 				args[0] + "-api-freq.csv"));
@@ -30,7 +30,7 @@ public class DistributionImporter {
 				query.append(headers[i], record[i]);
 			}
 			coll.update(query, 
-					new BasicDBObject("$set", new BasicDBObject(args[0], record[5])), 
+					new BasicDBObject("$set", new BasicDBObject(args[0], record[4])), 
 					true, false);
 		}
 		br.close();

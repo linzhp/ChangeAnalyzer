@@ -1,6 +1,5 @@
 package edu.ucsc.cs;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -11,7 +10,7 @@ public class BasicFreqCounter extends ChangeReducer {
 	public HashMap<String, Integer> changeFrequencies = new HashMap<String, Integer>();
 
 	@Override
-	public void add(List<SourceCodeChange> changes) {
+	public void add(List<SourceCodeChange> changes, int fileID, int commitID) {
 		for (SourceCodeChange c : changes) {
 			String category = c.getLabel();
 			Integer count = changeFrequencies.get(category);
@@ -32,7 +31,8 @@ public class BasicFreqCounter extends ChangeReducer {
 	public static void main(String[] args) throws Exception {
 		BasicFreqCounter reducer = new BasicFreqCounter();
 //		Distribution dist = new Distribution(1, Arrays.asList(641, 1165)); // voldemort local
-		new Repository(9, new ArrayList<Integer>(), reducer);
+		Repository repository = new Repository(9, reducer);
+		repository.extractChanges(null);
 		String[] changeTypes = reducer.changeFrequencies.keySet().toArray(new String[0]);
 		Arrays.sort(changeTypes);
 		System.out.println("changeType,freq");

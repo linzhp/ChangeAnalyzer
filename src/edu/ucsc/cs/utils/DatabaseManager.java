@@ -5,15 +5,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.Properties;
+
+import com.mongodb.DB;
+import com.mongodb.MongoClient;
 
 public class DatabaseManager {
 
-    private static DatabaseManager dbManager;
+    private static DatabaseManager instance;
     private String databasename, username, password;
-    private Connection conn = null;
-    Statement stmt;
+    private Connection conn;
+    private DB db;
 
     private DatabaseManager() {
         File file = new File("config/database.properties");
@@ -30,18 +32,27 @@ public class DatabaseManager {
             
             conn = DriverManager
                     .getConnection(databasename, username, password);
-            stmt = conn.createStatement();
-
+    		MongoClient mongo = new MongoClient();
+    		db = mongo.getDB("Evolution");
         } catch (Exception e) {
             LogManager.getLogger().severe(e.toString());
             System.exit(1);
         }
+        
+    }
+    
+    public static DatabaseManager getInstance() {
+        if (instance == null) {
+            instance = new DatabaseManager();
+        }
+        return instance;
     }
 
-    public static Connection getConnection() {
-        if (dbManager == null) {
-            dbManager = new DatabaseManager();
-        }
-        return dbManager.conn;
+    public static Connection getMySQLConnection() {
+        return getInstance().conn;
+    }
+    
+    public static DB getMongoDB() {
+    	return getInstance().db;
     }
 }

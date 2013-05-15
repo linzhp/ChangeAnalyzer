@@ -25,7 +25,7 @@ public class RepoFileDistiller {
 	public RepoFileDistiller(ChangeReducer reducer) {
 		this.reducer = reducer;
 		logger = LogManager.getLogger();
-		conn = DatabaseManager.getConnection();
+		conn = DatabaseManager.getMySQLConnection();
 	}
 	
 	public void extractASTDelta(int fileID, int commitID, char actionType) throws SQLException, IOException  {
@@ -34,7 +34,8 @@ public class RepoFileDistiller {
 				" with action type " + actionType);
 		switch (actionType) {
 		case 'C':
-			// the file is copied
+			// the file is created by copying from another file
+			processCopy(fileID, commitID);
 			break;
 		case 'M':
 			processModify(fileID, commitID);
@@ -64,6 +65,10 @@ public class RepoFileDistiller {
 					+ " not found");
 		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
+	
+	private void processCopy(int fileID, int commitID) throws SQLException {
+		processAdd(fileID, commitID);
+	}
 
 	private void processModify(int fileID, int commitID) throws SQLException, IOException  {
 		String newContent = getNewContent(fileID, commitID);
@@ -71,7 +76,8 @@ public class RepoFileDistiller {
 			logger.warning("Content for file " + fileID + " at commit_id " + commitID
 					+ " not found");
 		String oldContent = getOldContent(fileID);
-		extractDiff(oldContent, newContent);
+		List<SourceCodeChange> changes = extractDiff(oldContent, newContent);
+		this.reducer.add(changes, fileID, commitID);
 		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
 
@@ -96,9 +102,9 @@ public class RepoFileDistiller {
 		processModify(fileID, commitID);
 	}
 
-	private void extractDiff(String oldContent, String newContent) throws IOException {
+	private List<SourceCodeChange> extractDiff(String oldContent, String newContent) throws IOException {
 		if (newContent == null || oldContent == null) {
-			return;
+			return null;
 		}
 
 		File newFile = FileUtils.javaFileFromString("New", newContent);
@@ -109,9 +115,8 @@ public class RepoFileDistiller {
 		List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
 		if(changes == null) {
 			logger.info("No AST difference found");
-		} else {
-			this.reducer.add(changes);			
-		}
+		} 
+		return changes;
 	}
 
 	private String getOldContent(int fileID) {

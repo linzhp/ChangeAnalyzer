@@ -1,7 +1,6 @@
 package edu.ucsc.cs;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,7 +17,7 @@ public class APIChangeExtractor extends ChangeReducer {
 	}
 
 	@Override
-	public void add(List<SourceCodeChange> changes) throws IOException {
+	public void add(List<SourceCodeChange> changes, int fileID, int commitID) throws IOException {
 		
 		for(SourceCodeChange c : changes) {
 			if (c.getChangeType().isDeclarationChange()) {
@@ -53,7 +52,8 @@ public class APIChangeExtractor extends ChangeReducer {
 		try {
 			FileWriter writer = new FileWriter(new File(args[1]));
 			APIChangeExtractor reducer = new APIChangeExtractor(writer);
-			new Repository(Integer.valueOf(args[0]), new ArrayList<Integer>(), reducer);
+			Repository repository = new Repository(Integer.valueOf(args[0]), reducer);
+			repository.extractChanges(null);
 			writer.close();			
 		} catch(Exception e) {
 			Logger logger = LogManager.getLogger();

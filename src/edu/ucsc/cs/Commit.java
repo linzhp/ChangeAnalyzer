@@ -12,15 +12,15 @@ public class Commit {
 	private int id;
 	private Logger logger;
 	private Connection conn;
-	private List<Integer> excludedFileIDs;
+	private List<Integer> includedFileIDs;
 	private RepoFileDistiller distiller;
 	
-	public Commit(int commitID, List<Integer> excludedFileIDs, ChangeReducer reducer) {
+	public Commit(int commitID, List<Integer> fildIDs, ChangeReducer reducer) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
-		this.excludedFileIDs = excludedFileIDs;
+		this.includedFileIDs = fildIDs;
 		distiller = new RepoFileDistiller(reducer);
-		conn = DatabaseManager.getConnection();
+		conn = DatabaseManager.getMySQLConnection();
 	}
 
 	public void extractASTDelta() throws Exception {
@@ -31,11 +31,10 @@ public class Commit {
 					+ " and current_file_path like '%.java'");
 			while (file.next()) {
 				int fileID = file.getInt("file_id");
-				if (excludedFileIDs.contains(fileID)) {
-					continue;
+				if (includedFileIDs == null || includedFileIDs.contains(fileID)) {
+					char actionType = file.getString("type").charAt(0);
+					distiller.extractASTDelta(fileID, id, actionType);
 				}
-				char actionType = file.getString("type").charAt(0);
-				distiller.extractASTDelta(fileID, id, actionType);
 			}
 			stmt.close();
 		} catch (IOException | SQLException e) {

@@ -7,6 +7,7 @@ import java.util.List;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 
+import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Update;
 import edu.ucsc.cs.utils.DatabaseManager;
@@ -35,10 +36,12 @@ public class ChangeExtractor extends ChangeReducer {
 			BasicDBObject dbObj = new BasicDBObject("fileId", fileID)
 			.append("commitId", commitID)
 			.append("changeType", c.getLabel())
-			.append("sourceCodeEntity", c.getChangedEntity().getLabel())
-			.append("change", c.getClass().getSimpleName());
+			.append("entity", c.getChangedEntity().getLabel())
+			.append("changeClass", c.getClass().getSimpleName());
 			if (c instanceof Update) {
-				dbObj.append("newSourceCodeEntity", ((Update) c).getNewEntity().getLabel());
+				dbObj.append("newEntity", ((Update) c).getNewEntity().getLabel());
+			} else if (c instanceof Insert) {
+				dbObj.append("parentEntity", c.getParentEntity().getLabel());
 			}
 			collection.insert(dbObj);
 		}

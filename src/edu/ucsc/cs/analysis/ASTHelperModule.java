@@ -1,4 +1,4 @@
-package edu.ucsc.cs;
+package edu.ucsc.cs.analysis;
 
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelperFactory;

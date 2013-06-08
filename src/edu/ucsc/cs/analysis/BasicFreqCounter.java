@@ -1,4 +1,4 @@
-package edu.ucsc.cs;
+package edu.ucsc.cs.analysis;
 
 import java.util.Arrays;
 import java.util.HashMap;

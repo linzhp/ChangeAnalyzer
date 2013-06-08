@@ -1,4 +1,4 @@
-package edu.ucsc.cs;
+package edu.ucsc.cs.analysis;
 
 import java.io.File;
 import java.io.IOException;
@@ -72,11 +72,11 @@ public class RepoFileDistiller {
 
 	private void processModify(int fileID, int commitID) throws SQLException, IOException  {
 		String newContent = getNewContent(fileID, commitID);
-		if (newContent == null)
-			logger.warning("Content for file " + fileID + " at commit_id " + commitID
-					+ " not found");
 		String oldContent = getOldContent(fileID);
 		List<SourceCodeChange> changes = extractDiff(oldContent, newContent);
+		if (changes.size() == 0) {
+			logger.warning("No changes distilled for file "+ fileID + " at commit_id " + commitID);
+		}
 		this.reducer.add(changes, fileID, commitID);
 		FileContent.previousContent.put(fileID, new FileContent(commitID, newContent));
 	}
@@ -90,6 +90,8 @@ public class RepoFileDistiller {
 		String result;
 		if (!rs.next()) {
 			result = null;
+			logger.warning("Content for file " + fileID + " at commit_id " + commitID
+					+ " not found");
 		} else {
 			result = rs.getString("content");
 		}

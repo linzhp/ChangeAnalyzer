@@ -1,4 +1,4 @@
-package edu.ucsc.cs;
+package edu.ucsc.cs.simulation;
 
 import java.io.File;
 
@@ -10,6 +10,7 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
+import edu.ucsc.cs.analysis.ASTHelperModule;
 import edu.ucsc.cs.utils.FileUtils;
 
 public class JavaParser {

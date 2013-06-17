@@ -13,25 +13,31 @@ import com.mongodb.MongoClient;
 public class DatabaseManager {
 
     private static DatabaseManager instance;
+    public static Boolean test = false;
     private String databasename, username, password;
     private Connection conn;
     private DB db;
+    
 
     private DatabaseManager() {
-        File file = new File("config/database.properties");
-
         try {
-            FileInputStream fis = null;
-            fis = new FileInputStream(file);
-            Properties prop = new Properties();
-            prop.load(fis);
-            databasename = (String) prop.get("URL");
-            username = (String) prop.get("UserName");
-            password = (String) prop.get("UserPass");
-            fis.close();
-            
-            conn = DriverManager
-                    .getConnection(databasename, username, password);
+        	if (test) {
+        		Class.forName("org.sqlite.JDBC");
+        		conn = DriverManager.getConnection("jdbc:sqlite:test.db");
+        	} else {
+                File file = new File("config/database.properties");
+                FileInputStream fis = null;
+                fis = new FileInputStream(file);
+                Properties prop = new Properties();
+                prop.load(fis);
+                databasename = (String) prop.get("URL");
+                username = (String) prop.get("UserName");
+                password = (String) prop.get("UserPass");
+                fis.close();
+                
+                conn = DriverManager
+                        .getConnection(databasename, username, password);        		
+        	}
     		MongoClient mongo = new MongoClient();
     		db = mongo.getDB("Evolution");
         } catch (Exception e) {
@@ -48,7 +54,7 @@ public class DatabaseManager {
         return instance;
     }
 
-    public static Connection getMySQLConnection() {
+    public static Connection getSQLConnection() {
         return getInstance().conn;
     }
     

@@ -17,11 +17,11 @@ public class Repository {
 	}
 	
 	public void extractChanges(List<Integer> fileIDs) throws Exception  {
-		Connection conn = DatabaseManager.getMySQLConnection();
+		Connection conn = DatabaseManager.getSQLConnection();
 		Statement stmt = conn.createStatement();
 		ResultSet commitRS = stmt
 				.executeQuery("SELECT id AS commit_id FROM scmlog WHERE repository_id = "
-						+ repoID + " ORDER BY commit_date ASC");
+						+ repoID + " ORDER BY date ASC");
 		while (commitRS.next()) {
 			int commitID = commitRS.getInt("commit_id");
 			Commit commit = new Commit(commitID, fileIDs, reducer);

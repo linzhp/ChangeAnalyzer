@@ -39,18 +39,18 @@ public class ChangeExtractor extends ChangeReducer {
 
 	@Override
 	public void add(List<SourceCodeChange> changes, int fileID, int commitID) throws IOException, SQLException {
-		Connection conn = DatabaseManager.getMySQLConnection();
+		Connection conn = DatabaseManager.getSQLConnection();
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery("SELECT * FROM scmlog WHERE id = " + commitID);
 		Timestamp date = null;
 		if (rs.next()) {
-			date = rs.getTimestamp("commit_date");
+			date = rs.getTimestamp("date");
 		}
 		stmt.close();
 		for (SourceCodeChange c : changes) {
 			BasicDBObject dbObj = new BasicDBObject("fileId", fileID)
 			.append("commitId", commitID)
-			.append("commitDate", date)
+			.append("date", date)
 			.append("changeType", c.getLabel())
 			.append("entity", c.getChangedEntity().getLabel())
 			.append("changeClass", c.getClass().getSimpleName());

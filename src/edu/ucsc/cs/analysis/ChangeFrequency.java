@@ -21,7 +21,7 @@ public class ChangeFrequency {
 		DB mongo = DatabaseManager.getMongoDB();
 		DBCollection changesColl = mongo.getCollection("changes");
 		DBCursor allChanges = changesColl.find(new BasicDBObject("fileId", 2996))
-				.sort(new BasicDBObject("commitDate", 1));
+				.sort(new BasicDBObject("date", 1));
 		HashSet<Integer> commitIds = new HashSet<Integer>();
 		HashMap<String, Integer> training = new HashMap<String, Integer>(),
 				testing = new HashMap<String, Integer>();

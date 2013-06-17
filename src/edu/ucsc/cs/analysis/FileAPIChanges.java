@@ -15,7 +15,7 @@ public class FileAPIChanges {
 
 	public FileAPIChanges(int fileID, Writer writer) throws SQLException, IOException {
 		RepoFileDistiller distiller = new RepoFileDistiller(new APIChangeExtractor(writer));
-		Connection conn = DatabaseManager.getMySQLConnection();
+		Connection conn = DatabaseManager.getSQLConnection();
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery("SELECT commit_id, type FROM actions a" +
 				" JOIN scmlog s ON s.id=a.commit_id" +

@@ -19,9 +19,10 @@ public class Repository {
 	public void extractChanges(List<Integer> fileIDs) throws Exception  {
 		Connection conn = DatabaseManager.getSQLConnection();
 		Statement stmt = conn.createStatement();
+		// commit id is in topological order
 		ResultSet commitRS = stmt
 				.executeQuery("SELECT id AS commit_id FROM scmlog WHERE repository_id = "
-						+ repoID + " ORDER BY date ASC");
+						+ repoID + " ORDER BY id ASC");
 		while (commitRS.next()) {
 			int commitID = commitRS.getInt("commit_id");
 			Commit commit = new Commit(commitID, fileIDs, reducer);

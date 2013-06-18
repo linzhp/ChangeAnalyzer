@@ -26,7 +26,7 @@ public class RepoFileDistiller {
 	private Logger logger;
 	private Connection conn;
 	public static HashMap<Integer, TreeSet<Integer>> previousCommits = new HashMap<Integer, TreeSet<Integer>>();
-	private static HashMap<Integer, FileContent> previousContent = new HashMap<Integer, FileContent>();
+	private static HashMap<Integer, FileContent> fileContentCache = new HashMap<Integer, FileContent>();
 
 	public RepoFileDistiller(ChangeReducer reducer) {
 		this.reducer = reducer;
@@ -67,7 +67,7 @@ public class RepoFileDistiller {
 	}
 
 	private void processDelete(int fileID, int commitID) {
-		previousContent.remove(fileID);
+		fileContentCache.remove(fileID);
 	}
 
 	private void processAdd(int fileID, int commitID) throws SQLException {
@@ -75,24 +75,33 @@ public class RepoFileDistiller {
 		if (newContent == null)
 			logger.warning("Content for file " + fileID + " at commit_id "
 					+ commitID + " not found");
-		previousContent.put(fileID, new FileContent(commitID, newContent));
+		fileContentCache.put(fileID, new FileContent(commitID, newContent));
 	}
 
 	private void processCopy(int fileID, int commitID) throws SQLException {
 		processAdd(fileID, commitID);
 	}
 
-	private void processModify(int fileID, int commitID) throws SQLException,
+	private void processModify(int fileId, int commitId) throws SQLException,
 			IOException {
-		String newContent = getContent(fileID, commitID);
-		String oldContent = getOldContent(fileID);
-		List<SourceCodeChange> changes = extractDiff(oldContent, newContent);
-		if (changes.size() == 0) {
-			logger.warning("No changes distilled for file " + fileID
-					+ " at commit_id " + commitID);
+		String newContent = getContent(fileId, commitId);
+		int previousCommitId = findPreviousCommitId(fileId, commitId);
+		FileContent fileContent = fileContentCache.get(fileId);
+		String oldContent = null;
+		if (fileContent != null && fileContent.commitID == previousCommitId) {
+			oldContent = fileContent.content;
+		} else if (previousCommitId != -1){
+			 oldContent = getContent(fileId, previousCommitId);			
 		}
-		this.reducer.add(changes, fileID, commitID);
-		previousContent.put(fileID, new FileContent(commitID, newContent));
+		List<SourceCodeChange> changes = extractDiff(oldContent, newContent);
+		if (changes == null || changes.size() == 0) {
+			logger.warning("No changes distilled for file " + fileId
+					+ " at commit_id " + commitId + " from previous commit id " + previousCommitId);
+		} else {
+			this.reducer.add(changes, fileId, commitId);			
+		}
+		if (newContent != null)
+			fileContentCache.put(fileId, new FileContent(commitId, newContent));
 	}
 
 	private String getContent(int fileID, int commitID) throws SQLException {
@@ -130,22 +139,21 @@ public class RepoFileDistiller {
 			LinkedList<Integer> queue = new LinkedList<Integer>();
 			Integer prevCommit = it.next();
 			queue.add(prevCommit);
-			currentSearch:
-			while (!queue.isEmpty()) {
+			currentSearch: while (!queue.isEmpty()) {
 				Integer currentCommit = queue.pop();
 				if (currentCommit == commitId) {
 					// find an ancestor Commit
 					return prevCommit;
 				}
-				
+
 				if (currentCommit > commitId) {
-					/* Optimization:
-					 * As the commit ids are in topological order, if
-					 * current commit id is greater than the target commit ID,
-					 * it is not possible for the former to be the parent of the
-					 * later.
+					/*
+					 * Optimization: As the commit ids are in topological order,
+					 * if current commit id is greater than the target commit
+					 * ID, it is not possible for the former to be the parent of
+					 * the later.
 					 */
-					break;
+					continue;
 				}
 				// add children to the queue
 				Statement stmt = conn.createStatement();
@@ -155,10 +163,11 @@ public class RepoFileDistiller {
 				while (rs.next()) {
 					int child = rs.getInt("commit_id");
 					if (pc.contains(child)) {
-						/* Optimization
-						 * Because commitId is not a merge commit, it should only has one
-						 * parent. Thus if currentCommit has a child already in previousCommits,
-						 * it is not the preceding commit of commitId.
+						/*
+						 * Optimization Because commitId is not a merge commit,
+						 * it should only has one parent. Thus if currentCommit
+						 * has a child already in previousCommits, it is not the
+						 * preceding commit of commitId.
 						 */
 						break currentSearch;
 					} else {
@@ -169,6 +178,7 @@ public class RepoFileDistiller {
 
 			}
 		}
+		logger.warning("No previous commit found for file " + fileId + "@ commit " + commitId);
 		return -1;
 	}
 
@@ -195,17 +205,4 @@ public class RepoFileDistiller {
 		}
 		return changes;
 	}
-
-	private String getOldContent(int fileID) {
-		FileContent content = previousContent.get(fileID);
-		if (content == null) {
-			logger.info("No previous revision of file " + fileID + " found!");
-			return null;
-		} else {
-			logger.info("Previous revision of file " + fileID
-					+ " found at commit " + content.commitID);
-			return content.content;
-		}
-	}
-
 }

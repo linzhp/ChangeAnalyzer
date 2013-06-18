@@ -39,7 +39,7 @@ public class DatabaseManager {
                         .getConnection(databasename, username, password);        		
         	}
     		MongoClient mongo = new MongoClient();
-    		db = mongo.getDB("Evolution");
+    		db = mongo.getDB("evolution");
         } catch (Exception e) {
             LogManager.getLogger().severe(e.toString());
             System.exit(1);

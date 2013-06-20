@@ -8,6 +8,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
@@ -47,10 +48,11 @@ public class ChangeExtractor extends ChangeReducer {
 			date = rs.getTimestamp("date");
 		}
 		stmt.close();
+		Logger logger = LogManager.getLogger();
 		for (SourceCodeChange c : changes) {
 			BasicDBObject dbObj = new BasicDBObject("fileId", fileID)
 			.append("commitId", commitID)
-			.append("date", date)
+			.append("date", date.toString().split("\\.")[0]) // yyyy-mm-dd hh:mm:ss
 			.append("changeType", c.getLabel())
 			.append("entity", c.getChangedEntity().getLabel())
 			.append("changeClass", c.getClass().getSimpleName());
@@ -62,7 +64,7 @@ public class ChangeExtractor extends ChangeReducer {
 				Move m = (Move)c;
 				dbObj.append("newParentEntity", m.getNewParentEntity().getLabel());
 				if (m.getNewEntity().getType() != m.getChangedEntity().getType()) {
-					LogManager.getLogger().warning("entity changed when moving: " + m.getChangedEntity() + "->" + m.getNewEntity());
+					logger.warning("entity changed when moving: " + m.getChangedEntity() + "->" + m.getNewEntity());
 				}
 			}
 			collection.insert(dbObj);

@@ -35,8 +35,12 @@ public class Commit {
 			while (file.next()) {
 				int fileID = file.getInt("file_id");
 				if (includedFileIds == null || includedFileIds.contains(fileID)) {
-					char actionType = file.getString("type").charAt(0);
-					distiller.extractASTDelta(fileID, id, actionType);
+					String changeStatus = file.getString("type");
+					if (changeStatus.length() == 1) {
+						// ignore merges
+						char actionType = changeStatus.charAt(0);						
+						distiller.extractASTDelta(fileID, id, actionType);
+					}
 				}
 			}
 			stmt.close();

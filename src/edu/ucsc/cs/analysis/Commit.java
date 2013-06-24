@@ -17,7 +17,7 @@ public class Commit {
 	private List<Integer> includedFileIds;
 	private RepoFileDistiller distiller;
 	
-	public Commit(int commitID, List<Integer> fildIds, ChangeReducer reducer) {
+	public Commit(int commitID, List<Integer> fildIds, ChangeProcessor reducer) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
 		this.includedFileIds = fildIds;

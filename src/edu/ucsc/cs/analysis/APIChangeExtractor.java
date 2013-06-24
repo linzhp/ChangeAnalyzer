@@ -8,7 +8,7 @@ import java.util.logging.Logger;
 import ch.uzh.ifi.seal.changedistiller.model.entities.*;
 import edu.ucsc.cs.utils.LogManager;
 
-public class APIChangeExtractor extends ChangeReducer {
+public class APIChangeExtractor extends ChangeProcessor {
 	private Writer writer;
 	
 	public APIChangeExtractor(Writer writer) throws IOException {

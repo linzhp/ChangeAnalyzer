@@ -12,53 +12,48 @@ import com.mongodb.MongoClient;
 
 public class DatabaseManager {
 
-    private static DatabaseManager instance;
     public static Boolean test = false;
-    private String databasename, username, password;
-    private Connection conn;
-    private DB db;
-    
-
-    private DatabaseManager() {
-        try {
-        	if (test) {
-        		Class.forName("org.sqlite.JDBC");
-        		conn = DriverManager.getConnection("jdbc:sqlite:test.db");
-        	} else {
-                File file = new File("config/database.properties");
-                FileInputStream fis = null;
-                fis = new FileInputStream(file);
-                Properties prop = new Properties();
-                prop.load(fis);
-                databasename = (String) prop.get("URL");
-                username = (String) prop.get("UserName");
-                password = (String) prop.get("UserPass");
-                fis.close();
-                
-                conn = DriverManager
-                        .getConnection(databasename, username, password);        		
-        	}
-    		MongoClient mongo = new MongoClient();
-    		db = mongo.getDB("evolution");
-        } catch (Exception e) {
-            LogManager.getLogger().severe(e.toString());
-            System.exit(1);
-        }
-        
-    }
-    
-    public static DatabaseManager getInstance() {
-        if (instance == null) {
-            instance = new DatabaseManager();
-        }
-        return instance;
-    }
+    private static Connection conn;
+    private static DB db;
 
     public static Connection getSQLConnection() {
-        return getInstance().conn;
+    	if (conn == null) {
+            try {
+            	if (test) {
+            		Class.forName("org.sqlite.JDBC");
+            		conn = DriverManager.getConnection("jdbc:sqlite:test.db");
+            	} else {
+                    File file = new File("config/database.properties");
+                    FileInputStream fis = null;
+                    fis = new FileInputStream(file);
+                    Properties prop = new Properties();
+                    prop.load(fis);
+                    String databasename = (String) prop.get("URL");
+                    String username = (String) prop.get("UserName");
+                    String password = (String) prop.get("UserPass");
+                    fis.close();
+                    
+                    conn = DriverManager
+                            .getConnection(databasename, username, password);        		
+            	}
+            } catch (Exception e) {
+                LogManager.getLogger().severe(e.toString());
+                System.exit(1);
+            }    		
+    	}
+        return conn;
     }
     
     public static DB getMongoDB() {
-    	return getInstance().db;
+    	if (db == null) {
+            try {
+        		MongoClient mongo = new MongoClient();
+        		db = mongo.getDB("evolution");
+            } catch (Exception e) {
+                LogManager.getLogger().severe(e.toString());
+                System.exit(1);
+            }
+    	}
+    	return db;
     }
 }

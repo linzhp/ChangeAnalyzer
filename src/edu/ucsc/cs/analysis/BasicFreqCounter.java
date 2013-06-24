@@ -6,7 +6,7 @@ import java.util.List;
 
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 
-public class BasicFreqCounter extends ChangeReducer {
+public class BasicFreqCounter extends ChangeProcessor {
 	public HashMap<String, Integer> changeFrequencies = new HashMap<String, Integer>();
 
 	@Override

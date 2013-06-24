@@ -20,7 +20,7 @@ import ch.uzh.ifi.seal.changedistiller.model.entities.Update;
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.LogManager;
 
-public class ChangeExtractor extends ChangeReducer {
+public class ChangeExtractor extends ChangeProcessor {
 	
 	private DBCollection collection;
 

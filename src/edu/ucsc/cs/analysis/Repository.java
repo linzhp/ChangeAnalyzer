@@ -9,9 +9,9 @@ import edu.ucsc.cs.utils.DatabaseManager;
 
 public class Repository {
 	private int repoID;
-	private ChangeReducer reducer;
+	private ChangeProcessor reducer;
 	
-	public Repository(int repoID, ChangeReducer reducer){
+	public Repository(int repoID, ChangeProcessor reducer){
 		this.repoID = repoID;
 		this.reducer = reducer;
 	}

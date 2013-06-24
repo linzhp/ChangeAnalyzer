@@ -22,13 +22,13 @@ import edu.ucsc.cs.utils.FileUtils;
 import edu.ucsc.cs.utils.LogManager;
 
 public class RepoFileDistiller {
-	private ChangeReducer reducer;
+	private ChangeProcessor reducer;
 	private Logger logger;
 	private Connection conn;
 	public static HashMap<Integer, TreeSet<Integer>> previousCommits = new HashMap<Integer, TreeSet<Integer>>();
 	private static HashMap<Integer, FileContent> fileContentCache = new HashMap<Integer, FileContent>();
 
-	public RepoFileDistiller(ChangeReducer reducer) {
+	public RepoFileDistiller(ChangeProcessor reducer) {
 		this.reducer = reducer;
 		logger = LogManager.getLogger();
 		conn = DatabaseManager.getSQLConnection();

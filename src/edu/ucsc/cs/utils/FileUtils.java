@@ -4,7 +4,7 @@ import java.io.*;
 
 
 public class FileUtils {
-	public static File javaFileFromString(String fileName, String content) {
+	public static File javaFileFromString(String content, String fileName) {
 		File temp = null;
 		try {
 			temp = File.createTempFile(fileName, ".java");
@@ -13,7 +13,7 @@ public class FileUtils {
 			out.write(content);
 			out.close();			
 		} catch (Exception e) {
-			LogManager.getLogger().severe(e.toString());
+			e.printStackTrace();
 			System.exit(1);
 		}
 		return temp;

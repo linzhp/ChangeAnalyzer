@@ -4,7 +4,7 @@ import java.io.File;
 
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelperFactory;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.StructureNode;
+import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
 
 import com.google.inject.Guice;
 import com.google.inject.Inject;
@@ -15,27 +15,38 @@ import edu.ucsc.cs.utils.FileUtils;
 
 public class JavaParser {
 	@Inject private ASTHelperFactory factory;
-	private ASTHelper<StructureNode> astHelper;
 	
 	public JavaParser() {
     	Injector injector = Guice.createInjector(new ASTHelperModule());
     	factory = injector.getInstance(ASTHelperFactory.class);		
 	}
  	
-	public StructureNode parse(String source, String fileName) {
+	public JavaStructureNode parse(String source, String fileName) {
 		File file = FileUtils.javaFileFromString(source, fileName);
 		return this.parse(file);
 	}
     
     @SuppressWarnings("unchecked")
-	public StructureNode parse(File file) {
-		astHelper = factory.create(file);
+	public JavaStructureNode parse(File file) {
+    	ASTHelper<JavaStructureNode> astHelper = factory.create(file);
 		return astHelper.createStructureTree();
 	}
     
+	public ASTHelper<JavaStructureNode> getASTHelper(String source, String fileName) {
+    	File file = FileUtils.javaFileFromString(source, fileName);
+    	return getASTHelper(file);
+    }
+    
+    @SuppressWarnings("unchecked")
+	public ASTHelper<JavaStructureNode> getASTHelper(File file) {
+    	return factory.create(file);
+    }
+    
     public static void main(String[] args) {
     	JavaParser parser = new JavaParser();
-    	StructureNode tree = parser.parse(new File("src/edu/ucsc/cs/JavaParser.java"));
+    	ASTHelper<JavaStructureNode> astHelper = 
+    			parser.getASTHelper(new File("src/edu/ucsc/cs/simulation/JavaParser.java"));
+    	JavaStructureNode tree = astHelper.createStructureTree();
     	System.out.println(tree);
     }
 }

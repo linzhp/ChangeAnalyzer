@@ -18,14 +18,19 @@ public class Sampler {
 	private LogNormalDistribution changesPerCommit;
 	private EnumeratedDistribution<BasicDBObject> changeTypes;
 	
+	/**
+	 * Assuming the number of changes per commit follows a log normal distribution
+	 * @param mean mean of the normal distribution
+	 * @param std standard deviation of the normal distribution
+	 */
 	public Sampler(double mean, double std) {
 		changesPerCommit = new LogNormalDistribution(mean, std);
 		ArrayList<Pair<BasicDBObject, Double>> freqs = new ArrayList<Pair<BasicDBObject, Double>>();
-		DBCollection collection = DatabaseManager.getMongoDB().getCollection("contingency");
+		DBCollection collection = DatabaseManager.getMongoDB().getCollection("trainingChangesPerCategory");
 		DBCursor cursor = collection.find();
 		while (cursor.hasNext()) {
 			DBObject obj = cursor.next();
-			freqs.add(new Pair<BasicDBObject, Double>((BasicDBObject)obj.get("_id"), (Double)obj.get("value")));
+			freqs.add(new Pair<BasicDBObject, Double>((BasicDBObject)obj.get("_id"), (Double)obj.get("freq")));
 		}
 		changeTypes = new EnumeratedDistribution<BasicDBObject>(freqs);
 	}
@@ -46,7 +51,7 @@ public class Sampler {
 	
 	
 	public static void main(String[] args) {
-		Sampler sampler = new Sampler(2.379116, 1.190405);
+		Sampler sampler = new Sampler(1.503785, 1.215351);
 		for (int i = 0; i < 10; i++) {
 			System.out.println(sampler.getNumChanges());
 		}

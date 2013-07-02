@@ -1,31 +1,25 @@
 package edu.ucsc.cs.simulation;
 
 import java.io.File;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jdt.internal.compiler.ast.ASTNode;
+import org.eclipse.jdt.internal.compiler.ast.Javadoc;
 
 import static java.lang.System.out;
 
-import org.apache.commons.lang3.StringUtils;
 
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.ast.java.JavaASTNodeTypeConverter;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.StructureNode;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.java.JavaEntityType;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
 import ch.uzh.ifi.seal.changedistiller.treedifferencing.Node;
 
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-
-import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.LogManager;
 
 public class Simulator {
@@ -36,7 +30,12 @@ public class Simulator {
 		nodeIndex = new HashMap<String, ArrayList<JavaStructureNode>>();
 		JavaParser parser = new JavaParser();
 		astHelper = parser.getASTHelper(new File("TextArea.java"));
-		indexNodes(astHelper.createStructureTree());
+		JavaStructureNode tree = astHelper.createStructureTree();
+		ASTNode classNode = tree.getChildren().get(0).getASTNode();
+		ClassModifier modifier = new ClassModifier(classNode);
+		modifier.rename("Zebra");
+		out.print(classNode);
+//		indexNodes(tree);
 	}
 	
 	/**
@@ -45,7 +44,6 @@ public class Simulator {
 	 * @return
 	 */
 	public void indexNodes(JavaStructureNode root) {
-		Node declarationTree = astHelper.createDeclarationTree(root);
 		JavaASTNodeTypeConverter converter = new JavaASTNodeTypeConverter();
 		EntityType type = converter.convertNode(root.getASTNode());
 		if (type != null) {
@@ -64,8 +62,28 @@ public class Simulator {
 	}
 	
 	private String getString(JavaStructureNode root, int indent) {
-		// TODO private, public motifiers?
-		return "";
+		Node declarationTree = astHelper.createDeclarationTree(root);
+		StringBuilder buffer = new StringBuilder();
+		// Printing declaration
+		EntityType entityType = declarationTree.getEntity().getType();
+		if (entityType != null) {
+			for (int i = 0; i < indent; i++) {
+				buffer.append('\t');
+			}
+			switch (entityType.toString()) {
+			case "CLASS":
+				
+				break;
+			case "METHOD":
+				break;
+			case "FIELD":
+				break;
+			}
+		}
+		for (JavaStructureNode c : root.getChildren()) {
+			buffer.append(getString(c, indent + 1));
+		}
+		return buffer.toString();
 	}
 	
 	public String getString(JavaStructureNode root) {

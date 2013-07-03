@@ -1,14 +1,13 @@
 package edu.ucsc.cs.simulation;
 
 import java.io.File;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.Javadoc;
 
 import static java.lang.System.out;
 
@@ -16,7 +15,6 @@ import static java.lang.System.out;
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.ast.java.JavaASTNodeTypeConverter;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
-import ch.uzh.ifi.seal.changedistiller.model.classifiers.java.JavaEntityType;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
 import ch.uzh.ifi.seal.changedistiller.treedifferencing.Node;
 
@@ -33,7 +31,7 @@ public class Simulator {
 		JavaStructureNode tree = astHelper.createStructureTree();
 		ASTNode classNode = tree.getChildren().get(0).getASTNode();
 		ClassModifier modifier = new ClassModifier(classNode);
-		modifier.rename("Zebra");
+		modifier.addClass();
 		out.print(classNode);
 //		indexNodes(tree);
 	}
@@ -93,8 +91,9 @@ public class Simulator {
 	/**
 	 * @param args
 	 * @throws SQLException 
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public static void main(String[] args) throws SQLException {
+	public static void main(String[] args) throws SQLException, NoSuchAlgorithmException {
 		Simulator simulator = new Simulator();
 	}
 

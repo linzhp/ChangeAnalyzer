@@ -4,6 +4,8 @@ import java.util.Arrays;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
+import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 
@@ -27,9 +29,9 @@ public class ClassModifier {
 		// mark it as a member type
 		memberClass.bits |= ASTNode.Bit11; 
 		// make the inner class private, as it's common
-		node.modifiers |= ClassFileConstants.AccPrivate; 
+		memberClass.modifiers |= ClassFileConstants.AccPrivate; 
 		// give it a name
-		String name = "Innerclass" + DigestUtils.md5Hex(String.valueOf(node.hashCode())).substring(0, 7);
+		String name = "NewClass" + DigestUtils.md5Hex(String.valueOf(memberClass.hashCode())).substring(0, 7);
 		memberClass.name = name.toCharArray();
 		// add it to the AST
 		if (node.memberTypes != null) {
@@ -42,10 +44,29 @@ public class ClassModifier {
 		}		
 	}
 	
+	public void addMethod() {
+		MethodDeclaration method = new MethodDeclaration(node.compilationResult);
+		// make it private, for no reason
+		method.modifiers |= ClassFileConstants.AccPrivate;
+		// give it a name
+		String name = "newMethod" + DigestUtils.md5Hex(String.valueOf(method.hashCode())).substring(0, 7);
+		method.selector = name.toCharArray();
+		// addit it to the AST
+		if (node.methods != null) {
+			AbstractMethodDeclaration[] methods = Arrays.copyOf(node.methods, node.methods.length + 1);
+			methods[methods.length-1] = method;
+			node.methods = methods;
+		} else {
+			node.methods = new AbstractMethodDeclaration[1];
+			node.methods[0] = method;
+		}
+	}
+	
 	public void modify(BasicDBObject object) {
 		String changeType = object.getString("changeType");
 		switch (changeType) {
 		case "ADDITIONAL_CLASS":
+			this.addClass();
 			break;
 		case "ADDITIONAL_FUNCTIONALITY":
 			break;

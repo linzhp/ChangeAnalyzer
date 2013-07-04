@@ -1,13 +1,15 @@
 package edu.ucsc.cs.simulation;
 
-import java.util.Arrays;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
+import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
 
 import com.mongodb.BasicDBObject;
 
@@ -34,14 +36,7 @@ public class ClassModifier {
 		String name = "NewClass" + DigestUtils.md5Hex(String.valueOf(memberClass.hashCode())).substring(0, 7);
 		memberClass.name = name.toCharArray();
 		// add it to the AST
-		if (node.memberTypes != null) {
-			TypeDeclaration[] memberTypes = Arrays.copyOf(node.memberTypes, node.memberTypes.length + 1);
-			memberTypes[node.memberTypes.length] = memberClass;
-			node.memberTypes = memberTypes;
-		} else {
-			node.memberTypes = new TypeDeclaration[1];
-			node.memberTypes[0] = memberClass;
-		}		
+		node.memberTypes = ArrayUtils.add(node.memberTypes, memberClass);
 	}
 	
 	public void addMethod() {
@@ -51,15 +46,22 @@ public class ClassModifier {
 		// give it a name
 		String name = "newMethod" + DigestUtils.md5Hex(String.valueOf(method.hashCode())).substring(0, 7);
 		method.selector = name.toCharArray();
-		// addit it to the AST
-		if (node.methods != null) {
-			AbstractMethodDeclaration[] methods = Arrays.copyOf(node.methods, node.methods.length + 1);
-			methods[methods.length-1] = method;
-			node.methods = methods;
-		} else {
-			node.methods = new AbstractMethodDeclaration[1];
-			node.methods[0] = method;
-		}
+		// making return type void
+		method.returnType = TypeReference.baseTypeReference(TypeIds.T_void, 0);
+		// add it to the AST
+		node.methods = ArrayUtils.add(node.methods, method);
+	}
+	
+	public void addField() {
+		FieldDeclaration field = new FieldDeclaration();
+		field.modifiers |= ClassFileConstants.AccPrivate;
+		// give it a name
+		String name = "newMethod" + DigestUtils.md5Hex(String.valueOf(field.hashCode())).substring(0, 7);
+		field.name = name.toCharArray();
+		// making it a String
+		field.type = TypeReference.baseTypeReference(TypeIds.T_JavaLangString, 0);
+		// add it to the AST
+		node.fields = ArrayUtils.add(node.fields, field);
 	}
 	
 	public void modify(BasicDBObject object) {

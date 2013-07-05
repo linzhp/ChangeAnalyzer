@@ -15,7 +15,7 @@ import com.mongodb.BasicDBObject;
 
 import edu.ucsc.cs.utils.LogManager;
 
-public class ClassModifier {
+public class ClassModifier implements Modifier {
 	private TypeDeclaration node;
 	
 	public ClassModifier(ASTNode node) {
@@ -52,6 +52,13 @@ public class ClassModifier {
 		node.methods = ArrayUtils.add(node.methods, method);
 	}
 	
+	public void removeMethod() {
+		if (node.methods != null) {
+			node.methods = ArrayUtils.remove(node.methods, (int)(Math.random() * node.methods.length));
+		}
+		
+	}
+	
 	public void removeClass() {
 		if (node.memberTypes != null) {
 			node.memberTypes = ArrayUtils.remove(node.memberTypes, (int)(Math.random() * node.memberTypes.length));
@@ -70,6 +77,10 @@ public class ClassModifier {
 		node.fields = ArrayUtils.add(node.fields, field);
 	}
 	
+	/* (non-Javadoc)
+	 * @see edu.ucsc.cs.simulation.Modifier#modify(com.mongodb.BasicDBObject)
+	 */
+	@Override
 	public void modify(BasicDBObject object) {
 		String changeType = object.getString("changeType");
 		switch (changeType) {
@@ -77,10 +88,13 @@ public class ClassModifier {
 			this.addClass();
 			break;
 		case "ADDITIONAL_FUNCTIONALITY":
+			this.addMethod();
 			break;
 		case "ADDITIONAL_OBJECT_STATE":
+			this.addField();
 			break;
 		case "REMOVED_CLASS":
+			this.removeClass();
 			break;
 		default:
 			LogManager.getLogger().warning(changeType + " is not supported");

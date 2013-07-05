@@ -193,8 +193,8 @@ public class RepoFileDistiller {
 			return null;
 		}
 
-		File newFile = FileUtils.javaFileFromString("New", newContent);
-		File oldFile = FileUtils.javaFileFromString("Old", oldContent);
+		File newFile = FileUtils.javaFileFromString(newContent, "New");
+		File oldFile = FileUtils.javaFileFromString(oldContent, "Old");
 		FileDistiller distiller = ChangeDistiller
 				.createFileDistiller(Language.JAVA);
 		distiller.extractClassifiedSourceCodeChanges(oldFile, newFile);

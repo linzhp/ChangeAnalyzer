@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 
+import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Move;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
@@ -58,7 +59,7 @@ public class ChangeExtractor extends ChangeProcessor {
 			.append("changeClass", c.getClass().getSimpleName());
 			if (c instanceof Update) {
 				dbObj.append("newEntity", ((Update) c).getNewEntity().getLabel());
-			} else if (c instanceof Insert) {
+			} else if (c instanceof Insert || c instanceof Delete) {
 				dbObj.append("parentEntity", c.getParentEntity().getLabel());
 			} else if (c instanceof Move) {
 				Move m = (Move)c;

@@ -52,6 +52,12 @@ public class ClassModifier {
 		node.methods = ArrayUtils.add(node.methods, method);
 	}
 	
+	public void removeClass() {
+		if (node.memberTypes != null) {
+			node.memberTypes = ArrayUtils.remove(node.memberTypes, (int)(Math.random() * node.memberTypes.length));
+		}
+	}
+	
 	public void addField() {
 		FieldDeclaration field = new FieldDeclaration();
 		field.modifiers |= ClassFileConstants.AccPrivate;

@@ -19,7 +19,7 @@ public class ClassModifierTest {
 	@Before
 	public void setUp() {
 		JavaParser parser = new JavaParser();
-		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("src/edu/ucsc/cs/test/ClassModifierTest.java"));
+		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("fixtures/TextArea.java"));
 		JavaStructureNode tree = astHelper.createStructureTree();
 		classNode = (TypeDeclaration)tree.getChildren().get(0).getASTNode();
 		modifier = new ClassModifier(classNode);		
@@ -37,6 +37,12 @@ public class ClassModifierTest {
 		int oldCount = classNode.methods == null ? 0:classNode.methods.length;
 		modifier.addMethod();
 		assertEquals(oldCount + 1, classNode.methods.length);
-		System.out.println(classNode.toString());
+	}
+	
+	@Test
+	public void testRemoveClass() {
+		int oldCount = classNode.memberTypes == null ? 0:classNode.memberTypes.length;
+		modifier.removeClass();
+		assertEquals(oldCount - 1, classNode.memberTypes.length);
 	}
 }

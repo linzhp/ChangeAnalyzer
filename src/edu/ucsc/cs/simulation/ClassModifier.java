@@ -15,10 +15,11 @@ import com.mongodb.BasicDBObject;
 
 import edu.ucsc.cs.utils.LogManager;
 
-public class ClassModifier implements Modifier {
+public class ClassModifier extends Modifier {
 	private TypeDeclaration node;
 	
-	public ClassModifier(ASTNode node) {
+	public ClassModifier(ASTNode node, Indexer indexer) {
+		super(indexer);
 		this.node = (TypeDeclaration)node;
 	}
 	
@@ -37,6 +38,8 @@ public class ClassModifier implements Modifier {
 		memberClass.name = name.toCharArray();
 		// add it to the AST
 		node.memberTypes = ArrayUtils.add(node.memberTypes, memberClass);
+		// index the new class
+		indexer.index(memberClass);
 	}
 	
 	public void addMethod() {
@@ -50,18 +53,24 @@ public class ClassModifier implements Modifier {
 		method.returnType = TypeReference.baseTypeReference(TypeIds.T_void, 0);
 		// add it to the AST
 		node.methods = ArrayUtils.add(node.methods, method);
+		// index the new method
+		indexer.index(method);
 	}
 	
 	public void removeMethod() {
 		if (node.methods != null) {
-			node.methods = ArrayUtils.remove(node.methods, (int)(Math.random() * node.methods.length));
+			int methodIndex = (int)(Math.random() * node.methods.length);
+			indexer.nodeIndex.get("METHOD").remove(node.methods[methodIndex]);
+			node.methods = ArrayUtils.remove(node.methods, methodIndex);
 		}
 		
 	}
 	
 	public void removeClass() {
 		if (node.memberTypes != null) {
-			node.memberTypes = ArrayUtils.remove(node.memberTypes, (int)(Math.random() * node.memberTypes.length));
+			int i = (int)(Math.random() * node.memberTypes.length);
+			indexer.nodeIndex.get("CLASS").remove(node.memberTypes[i]);
+			node.memberTypes = ArrayUtils.remove(node.memberTypes, i);
 		}
 	}
 	
@@ -75,6 +84,8 @@ public class ClassModifier implements Modifier {
 		field.type = TypeReference.baseTypeReference(TypeIds.T_JavaLangString, 0);
 		// add it to the AST
 		node.fields = ArrayUtils.add(node.fields, field);
+		// index the new field
+		indexer.index(field);
 	}
 	
 	/* (non-Javadoc)

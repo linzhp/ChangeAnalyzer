@@ -7,10 +7,11 @@ import com.mongodb.BasicDBObject;
 
 import edu.ucsc.cs.utils.LogManager;
 
-public class MethodModifier implements Modifier{
+public class MethodModifier extends Modifier{
 	private MethodDeclaration node;
 	
-	public MethodModifier(ASTNode node) {
+	public MethodModifier(ASTNode node, Indexer indexer) {
+		super(indexer);
 		this.node = (MethodDeclaration)node;
 	}
 	
@@ -41,6 +42,7 @@ public class MethodModifier implements Modifier{
 		case "STATEMENT_DELETE":
 			break;
 		case "METHOD_RENAMING":
+			this.rename();
 			break;
 		default:
 			LogManager.getLogger().warning(changeType + " is not supported");

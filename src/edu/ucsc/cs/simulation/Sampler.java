@@ -10,7 +10,6 @@ import org.apache.commons.math3.util.Pair;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 
 import edu.ucsc.cs.utils.DatabaseManager;
 
@@ -29,8 +28,8 @@ public class Sampler {
 		DBCollection collection = DatabaseManager.getMongoDB().getCollection("trainingChangesPerCategory");
 		DBCursor cursor = collection.find();
 		while (cursor.hasNext()) {
-			DBObject obj = cursor.next();
-			freqs.add(new Pair<BasicDBObject, Double>((BasicDBObject)obj.get("_id"), (Double)obj.get("freq")));
+			BasicDBObject obj = (BasicDBObject)cursor.next();
+			freqs.add(new Pair<BasicDBObject, Double>((BasicDBObject)obj.get("_id"), obj.getDouble("freq")));
 		}
 		changeTypes = new EnumeratedDistribution<BasicDBObject>(freqs);
 	}

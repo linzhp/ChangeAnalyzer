@@ -23,7 +23,7 @@ public class Indexer extends ASTVisitor {
 	private JavaASTNodeTypeConverter converter = new JavaASTNodeTypeConverter();
 
 	
-	private void index(ASTNode node) {
+	public void index(ASTNode node) {
 		EntityType type = converter.convertNode(node);
 		if (type != null) {
 			String typeString = type.toString();

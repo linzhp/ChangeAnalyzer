@@ -77,39 +77,52 @@ public class ChangeSplitter {
 				testChangesPerCommit = new ChangesPerCommit();
 		ChangesPerCategory trainingChangesPerCategory = new ChangesPerCategory(),
 				testChangesPerCategory = new ChangesPerCategory();
+		HashMap<String, Record> counters = new HashMap<String, Record>();
+		ChangeTypeCounter trainingCounter = new ChangeTypeCounter("training", counters),
+				testCounter = new ChangeTypeCounter("test", counters);
 		ChangeSplitter splitter = new ChangeSplitter(100, 
-				Arrays.asList(trainingChangesPerCategory, trainingChangesPerCommit),
-				Arrays.asList(testChangesPerCategory, testChangesPerCommit));
+				Arrays.asList(trainingChangesPerCategory, trainingChangesPerCommit, trainingCounter),
+				Arrays.asList(testChangesPerCategory, testChangesPerCommit, testCounter));
 		splitter.split();
 		
 		DB mongo = DatabaseManager.getMongoDB();
 		
-		DBCollection collection = mongo.getCollection("trainingChangesPerCommit");
+		DBCollection collection = mongo.getCollection("changesPerCommit");
 		HashMap<Integer, Integer> changesPerCommit = trainingChangesPerCommit.getCounters();
 		for (Integer key: changesPerCommit.keySet()) {
-			collection.insert(new BasicDBObject("_id", key)
-			.append("freq", changesPerCommit.get(key)));
+			collection.insert(new BasicDBObject("commit_id", key)
+			.append("freq", changesPerCommit.get(key))
+			.append("set", "training"));
 		}
 		
-		collection = mongo.getCollection("testChangesPerCommit");
 		changesPerCommit = testChangesPerCommit.getCounters();
 		for (Integer key: changesPerCommit.keySet()) {
-			collection.insert(new BasicDBObject("_id", key)
-			.append("freq", changesPerCommit.get(key)));
+			collection.insert(new BasicDBObject("commit_id", key)
+			.append("freq", changesPerCommit.get(key))
+			.append("set", "test"));
 		}
 		
-		collection = mongo.getCollection("trainingChangesPerCategory");
+		collection = mongo.getCollection("changesPerCategory");
 		HashMap<BasicDBObject, Integer> changesPerCatergory = trainingChangesPerCategory.getCounters();
 		for (BasicDBObject key: changesPerCatergory.keySet()) {
-			collection.insert(new BasicDBObject("_id", key).
-					append("freq", changesPerCatergory.get(key)));
+			collection.insert(new BasicDBObject("change", key).
+					append("freq", changesPerCatergory.get(key))
+					.append("set", "training"));
 		}
 
-		collection = mongo.getCollection("testChangesPerCategory");
 		changesPerCatergory = testChangesPerCategory.getCounters();
 		for (BasicDBObject key: changesPerCatergory.keySet()) {
-			collection.insert(new BasicDBObject("_id", key).
-					append("freq", changesPerCatergory.get(key)));
+			collection.insert(new BasicDBObject("change", key).
+					append("freq", changesPerCatergory.get(key))
+					.append("set", "test"));
+		}
+		
+		collection = mongo.getCollection("contingency");
+		for (String changeType: counters.keySet()) {
+			Record freq = counters.get(changeType);
+			collection.insert(new BasicDBObject("_id", changeType)
+			.append("training", freq.training)
+			.append("test", freq.test));
 		}
 		// getting the latest content
 		Set<Integer> commitIds = trainingChangesPerCommit.getCounters().keySet();

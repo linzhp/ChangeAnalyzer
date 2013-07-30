@@ -10,8 +10,16 @@
 	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.7.2.jar"/>
 	<classpathentry kind="lib" path="lib/mongo-java-driver-2.11.2.jar" sourcepath="lib/mongo-java-driver-2.11.2-sources.jar"/>
 	<classpathentry kind="lib" path="lib/commons-codec-1.8.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.jdt.core_3.8.3.v20130121-145325.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.core.resources_3.8.1.v20121114-124432.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.core.jobs_3.5.300.v20120912-155018.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.osgi_3.8.2.v20130124-134944.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.core.contenttype_3.4.200.v20120523-2004.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.equinox.preferences_3.5.1.v20121031-182809.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/changedistiller"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="/home/linzhp/.m2/repository/org/eclipse/jdt/core/compiler/ecj/4.2.1/ecj-4.2.1.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.core.runtime_3.8.0.v20120912-155025.jar"/>
+	<classpathentry kind="lib" path="/opt/eclipse/plugins/org.eclipse.equinox.common_3.6.100.v20120522-1841.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

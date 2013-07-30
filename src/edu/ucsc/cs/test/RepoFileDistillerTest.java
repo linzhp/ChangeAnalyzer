@@ -2,12 +2,16 @@ package edu.ucsc.cs.test;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.TreeSet;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import ch.uzh.ifi.seal.changedistiller.ast.FileUtils;
 
 import edu.ucsc.cs.analysis.RepoFileDistiller;
 import edu.ucsc.cs.utils.DatabaseManager;
@@ -40,4 +44,10 @@ public class RepoFileDistillerTest {
 		
 	}
 
+	@Test
+	public void testExtractDiff() throws IOException {
+		String leftContent = FileUtils.getContent(new File("TestLeft.java"));
+		String rightContent = FileUtils.getContent(new File("TestRight.java"));
+		RepoFileDistiller.extractDiff(rightContent, leftContent);
+	}
 }

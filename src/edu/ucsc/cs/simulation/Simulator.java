@@ -1,7 +1,6 @@
 package edu.ucsc.cs.simulation;
 
 import java.io.File;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,19 +10,21 @@ import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 
 import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
 
 import static java.lang.System.out;
 
-
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+import edu.ucsc.cs.utils.DatabaseManager;
 
 public class Simulator {
 	private ASTHelper<JavaStructureNode> astHelper;
 	private HashMap<String, ArrayList<ASTNode>> nodeIndex;
 	private Indexer indexer;
 	private CompilationUnitDeclaration astNode;
-	
+
 	public CompilationUnitDeclaration getAstNode() {
 		return astNode;
 	}
@@ -32,13 +33,13 @@ public class Simulator {
 		JavaParser parser = new JavaParser();
 		astHelper = parser.getASTHelper(new File("TextArea.java"));
 		JavaStructureNode tree = astHelper.createStructureTree();
-		astNode = (CompilationUnitDeclaration)tree.getASTNode();
+		astNode = (CompilationUnitDeclaration) tree.getASTNode();
 		indexer = new Indexer();
 		astNode.traverse(indexer, astNode.scope);
 		nodeIndex = indexer.nodeIndex;
 	}
-	
-	public void simulate(int numCommits, int numRuns) {
+
+	public void run(int numCommits) {
 		Sampler sampler = new Sampler(1.503785, 1.215351);
 		for (int i = 0; i < numCommits; i++) {
 			List<BasicDBObject> changes = sampler.generateCommit();
@@ -58,7 +59,8 @@ public class Simulator {
 				}
 				ArrayList<ASTNode> entities = nodeIndex.get(entityType);
 				if (entities != null && entities.size() > 0) {
-					ASTNode selected = entities.get((int)(entities.size()*Math.random()));
+					ASTNode selected = entities
+							.get((int) (entities.size() * Math.random()));
 					Modifier m;
 					switch (entityType) {
 					case "CLASS":
@@ -74,7 +76,7 @@ public class Simulator {
 						m = null;
 					}
 					m.modify(c);
-					
+
 				}
 			}
 		}
@@ -82,13 +84,20 @@ public class Simulator {
 
 	/**
 	 * @param args
-	 * @throws SQLException 
-	 * @throws NoSuchAlgorithmException 
+	 * @throws SQLException
 	 */
 	public static void main(String[] args) throws SQLException {
-		Simulator simulator = new Simulator();
-		simulator.simulate(20, 1);
-		out.print(simulator.getAstNode());
+		DB mongo = DatabaseManager.getMongoDB();
+		DBCollection collection = mongo.getCollection("simulationResults");
+		for (int i = 0; i < 500; i++) {
+			Simulator simulator = new Simulator();
+			simulator.run(23);
+			HashMap<String, ArrayList<ASTNode>> index = simulator.nodeIndex;
+			collection.insert(new BasicDBObject("methods", index.get("METHOD").size())
+			.append("fields", index.get("FIELD").size())
+			.append("classes", index.get("CLASS").size()));
+			
+		}
 	}
 
 }

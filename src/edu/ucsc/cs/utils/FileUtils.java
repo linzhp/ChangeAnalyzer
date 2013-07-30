@@ -2,7 +2,6 @@ package edu.ucsc.cs.utils;
 
 import java.io.*;
 
-
 public class FileUtils {
 	public static File javaFileFromString(String content, String fileName) {
 		File temp = null;

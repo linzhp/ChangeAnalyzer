@@ -7,30 +7,39 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
+import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.NodeFinder;
+
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
 import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
+import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
+import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
+import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.FileUtils;
 import edu.ucsc.cs.utils.LogManager;
 
 public class RepoFileDistiller {
 	private ChangeProcessor reducer;
-	private Logger logger;
+	private static Logger logger = LogManager.getLogger();
 	private Connection conn;
 	public static HashMap<Integer, TreeSet<Integer>> previousCommits = new HashMap<Integer, TreeSet<Integer>>();
 	private static HashMap<Integer, FileContent> fileContentCache = new HashMap<Integer, FileContent>();
 
 	public RepoFileDistiller(ChangeProcessor reducer) {
 		this.reducer = reducer;
-		logger = LogManager.getLogger();
 		conn = DatabaseManager.getSQLConnection();
 	}
 
@@ -187,7 +196,7 @@ public class RepoFileDistiller {
 		processModify(fileID, commitID);
 	}
 
-	private List<SourceCodeChange> extractDiff(String oldContent,
+	public static List<SourceCodeChange> extractDiff(String oldContent,
 			String newContent) throws IOException {
 		if (newContent == null || oldContent == null) {
 			return null;
@@ -202,6 +211,31 @@ public class RepoFileDistiller {
 		List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
 		if (changes == null) {
 			logger.info("No AST difference found");
+		} else {
+			ASTParser parser = ASTParser.newParser(AST.JLS4);
+//			@SuppressWarnings("rawtypes")
+//			Hashtable options = JavaCore.getOptions();
+//			JavaCore.setComplianceOptions(JavaCore.VERSION_1_7, options);
+//			parser.setCompilerOptions(options);
+			
+			parser.setSource(oldContent.toCharArray());
+			ASTNode oldAST = parser.createAST(null);
+			parser.setSource(newContent.toCharArray());
+			ASTNode newAST = parser.createAST(null);
+			
+			for (SourceCodeChange c : changes) {
+				SourceCodeEntity entity = c.getChangedEntity();
+				int start = entity.getStartPosition();
+				int length = entity.getEndPosition() - start;
+				if (c instanceof Insert) {
+					ASTNode ast = NodeFinder.perform(newAST, start, length);
+					ast.getNodeType();
+				} else if (c instanceof Delete) {
+					ASTNode ast = NodeFinder.perform(oldAST, start, length);
+					ast.getNodeType();
+					
+				}
+			}
 		}
 		return changes;
 	}

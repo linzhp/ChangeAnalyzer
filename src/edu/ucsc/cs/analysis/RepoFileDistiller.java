@@ -7,18 +7,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.NodeFinder;
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
 
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
@@ -27,6 +23,7 @@ import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
+import edu.ucsc.cs.simulation.JavaParser;
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.FileUtils;
 import edu.ucsc.cs.utils.LogManager;
@@ -204,6 +201,10 @@ public class RepoFileDistiller {
 
 		File newFile = FileUtils.javaFileFromString(newContent, "New");
 		File oldFile = FileUtils.javaFileFromString(oldContent, "Old");
+		return extractDiff(oldFile, newFile);
+	}
+	
+	public static List<SourceCodeChange> extractDiff(File oldFile, File newFile) {
 		FileDistiller distiller = ChangeDistiller
 				.createFileDistiller(Language.JAVA);
 		distiller.extractClassifiedSourceCodeChanges(oldFile, newFile);
@@ -212,31 +213,34 @@ public class RepoFileDistiller {
 		if (changes == null) {
 			logger.info("No AST difference found");
 		} else {
-			ASTParser parser = ASTParser.newParser(AST.JLS4);
-//			@SuppressWarnings("rawtypes")
-//			Hashtable options = JavaCore.getOptions();
-//			JavaCore.setComplianceOptions(JavaCore.VERSION_1_7, options);
-//			parser.setCompilerOptions(options);
-			
-			parser.setSource(oldContent.toCharArray());
-			ASTNode oldAST = parser.createAST(null);
-			parser.setSource(newContent.toCharArray());
-			ASTNode newAST = parser.createAST(null);
+			JavaParser parser = new JavaParser();
+			CompilationUnitDeclaration oldAST = (CompilationUnitDeclaration)parser.parse(oldFile).getASTNode();
+			CompilationUnitDeclaration newAST = (CompilationUnitDeclaration)parser.parse(newFile).getASTNode();
+			CompilationUnitScope scope = null;
+			LinkedList<SourceCodeChange> subChanges = new LinkedList<SourceCodeChange>();
 			
 			for (SourceCodeChange c : changes) {
 				SourceCodeEntity entity = c.getChangedEntity();
 				int start = entity.getStartPosition();
-				int length = entity.getEndPosition() - start;
+				int end = entity.getEndPosition();
+				SubChangeCollector collector = null;
 				if (c instanceof Insert) {
-					ASTNode ast = NodeFinder.perform(newAST, start, length);
-					ast.getNodeType();
+					collector = new InsertCollector(start, end);
+					newAST.traverse(collector, scope);
 				} else if (c instanceof Delete) {
-					ASTNode ast = NodeFinder.perform(oldAST, start, length);
-					ast.getNodeType();
-					
+					collector = new DeleteCollector(start, end);
+					oldAST.traverse(collector, scope);
+				}
+				if (collector != null && collector.getChanges().size()>0) {
+					List<SourceCodeChange> currentChanges = collector.getChanges();
+					// remove the out-most element, assuming pre-order search
+					currentChanges.remove(0);
+					subChanges.addAll(currentChanges);
 				}
 			}
+			changes.addAll(subChanges);
 		}
 		return changes;
+		
 	}
 }

@@ -217,7 +217,7 @@ public class RepoFileDistiller {
 			CompilationUnitDeclaration oldAST = (CompilationUnitDeclaration)parser.parse(oldFile).getASTNode();
 			CompilationUnitDeclaration newAST = (CompilationUnitDeclaration)parser.parse(newFile).getASTNode();
 			CompilationUnitScope scope = null;
-			LinkedList<SourceCodeChange> subChanges = new LinkedList<SourceCodeChange>();
+			List<SourceCodeChange> subChanges = new LinkedList<SourceCodeChange>();
 			
 			for (SourceCodeChange c : changes) {
 				SourceCodeEntity entity = c.getChangedEntity();

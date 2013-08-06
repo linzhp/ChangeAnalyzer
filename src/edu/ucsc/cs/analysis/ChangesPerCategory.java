@@ -17,7 +17,9 @@ public class ChangesPerCategory implements ChangeReducer {
 		switch ((String)change.get("changeClass")) {
 		case "Update": changeCategory.append("newEntity", change.get("newEntity")); break;
 		case "Move": changeCategory.append("newParentEntity", change.get("newParentEntity")); break;
-		case "Insert": changeCategory.append("parentEntity", change.get("parentEntity")); break;
+		case "Insert":
+		case "Delete":
+			changeCategory.append("parentEntity", change.get("parentEntity")); break;
 		}
 		
 		if (counters.containsKey(changeCategory)) {

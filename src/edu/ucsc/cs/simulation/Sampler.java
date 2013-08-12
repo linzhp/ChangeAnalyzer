@@ -25,11 +25,11 @@ public class Sampler {
 	public Sampler(double mean, double std) {
 		changesPerCommit = new LogNormalDistribution(mean, std);
 		ArrayList<Pair<BasicDBObject, Double>> freqs = new ArrayList<Pair<BasicDBObject, Double>>();
-		DBCollection collection = DatabaseManager.getMongoDB().getCollection("trainingChangesPerCategory");
-		DBCursor cursor = collection.find();
+		DBCollection collection = DatabaseManager.getMongoDB().getCollection("changesPerCategory");
+		DBCursor cursor = collection.find(new BasicDBObject("set", "training"));
 		while (cursor.hasNext()) {
 			BasicDBObject obj = (BasicDBObject)cursor.next();
-			freqs.add(new Pair<BasicDBObject, Double>((BasicDBObject)obj.get("_id"), obj.getDouble("freq")));
+			freqs.add(new Pair<BasicDBObject, Double>((BasicDBObject)obj.get("change"), obj.getDouble("freq")));
 		}
 		changeTypes = new EnumeratedDistribution<BasicDBObject>(freqs);
 	}

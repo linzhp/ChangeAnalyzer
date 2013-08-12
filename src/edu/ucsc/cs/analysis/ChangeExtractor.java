@@ -37,7 +37,7 @@ public class ChangeExtractor extends ChangeProcessor {
 		long start = System.currentTimeMillis();
 		ChangeExtractor reducer = new ChangeExtractor();
 		Repository repo = new Repository(1, reducer);
-		repo.extractChanges(Arrays.asList(2996));
+		repo.extractChanges(Arrays.asList(64, 34, 687));
 		System.out.println("Time spent: " + 
 				(System.currentTimeMillis() - start)/1000 +
 				" seconds");

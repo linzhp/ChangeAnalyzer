@@ -58,7 +58,7 @@ public class ClassModifier extends Modifier {
 	}
 	
 	public void removeMethod() {
-		if (node.methods != null) {
+		if (node.methods != null && node.methods.length > 0) {
 			int methodIndex = (int)(Math.random() * node.methods.length);
 			indexer.nodeIndex.get("METHOD").remove(node.methods[methodIndex]);
 			node.methods = ArrayUtils.remove(node.methods, methodIndex);
@@ -67,7 +67,7 @@ public class ClassModifier extends Modifier {
 	}
 	
 	public void removeClass() {
-		if (node.memberTypes != null) {
+		if (node.memberTypes != null && node.memberTypes.length > 0) {
 			int i = (int)(Math.random() * node.memberTypes.length);
 			indexer.nodeIndex.get("CLASS").remove(node.memberTypes[i]);
 			node.memberTypes = ArrayUtils.remove(node.memberTypes, i);
@@ -88,6 +88,14 @@ public class ClassModifier extends Modifier {
 		indexer.index(field);
 	}
 	
+	
+	public void removeField() {
+		if (node.fields != null && node.fields.length > 0) {
+			int i = (int)(Math.random() * node.fields.length);
+			indexer.nodeIndex.get("CLASS").remove(node.fields[i]);
+			node.fields = ArrayUtils.remove(node.fields, i);			
+		}
+	}
 	/* (non-Javadoc)
 	 * @see edu.ucsc.cs.simulation.Modifier#modify(com.mongodb.BasicDBObject)
 	 */
@@ -104,6 +112,11 @@ public class ClassModifier extends Modifier {
 		case "ADDITIONAL_OBJECT_STATE":
 			this.addField();
 			break;
+		case "REMOVED_FUNCTIONALITY":
+			this.removeMethod();
+			break;
+		case "REMOVED_OBJECT_STATE":
+			this.removeField();
 		case "REMOVED_CLASS":
 			this.removeClass();
 			break;

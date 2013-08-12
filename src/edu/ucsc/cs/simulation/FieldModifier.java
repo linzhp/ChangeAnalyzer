@@ -2,6 +2,8 @@ package edu.ucsc.cs.simulation;
 
 import com.mongodb.BasicDBObject;
 
+import edu.ucsc.cs.utils.LogManager;
+
 public class FieldModifier extends Modifier{
 	public FieldModifier(Indexer indexer) {
 		super(indexer);
@@ -9,7 +11,7 @@ public class FieldModifier extends Modifier{
 
 	@Override
 	public void modify(BasicDBObject object) {
-		// TODO Auto-generated method stub
-		
+		String changeType = object.getString("changeType");
+		LogManager.getLogger().warning(changeType + " is not supported");		
 	}
 }

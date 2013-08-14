@@ -2,16 +2,18 @@ package edu.ucsc.cs.analysis;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
+import static java.lang.System.out;
+
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+
+import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
+import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -19,7 +21,10 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
+import edu.ucsc.cs.simulation.Indexer;
+import edu.ucsc.cs.simulation.JavaParser;
 import edu.ucsc.cs.utils.DatabaseManager;
+import edu.ucsc.cs.utils.FileUtils;
 import edu.ucsc.cs.utils.LogManager;
 
 /**
@@ -28,34 +33,38 @@ import edu.ucsc.cs.utils.LogManager;
  *
  */
 public class ChangeSplitter {
-	private int cutOff;
+	private final int CUTOFF = 73;
+	private final int FILE_ID = 2996;
 	private List<ChangeReducer> traningReducers;
 	private List<ChangeReducer> testReducers;
-	public ChangeSplitter(int cutOff, 
-			List<ChangeReducer> trainingReducers,
+	public ChangeSplitter(List<ChangeReducer> trainingReducers,
 			List<ChangeReducer> testReducers) {
-		this.cutOff = cutOff;
 		this.traningReducers = trainingReducers;
 		this.testReducers = testReducers;
 	}
 	
-	public void split() {
+	public void split() throws SQLException, IOException {
 		DB mongo = DatabaseManager.getMongoDB();
 		DBCollection changesColl = mongo.getCollection("changes");
-		DBCursor allChanges = changesColl.find(new BasicDBObject("fileId", 2996))
+		DBCursor allChanges = changesColl.find(new BasicDBObject("fileId", FILE_ID))
 				.sort(new BasicDBObject("date", 1));
 		HashSet<Integer> traningCommitIds = new HashSet<Integer>();
 		int trainingChanges = 0, testingChanges = 0;
+		int cuttingCommit = 0, endCommit = 0;
 		while (allChanges.hasNext()) {
 			DBObject c = allChanges.next();
 			Integer commitId = (Integer)c.get("commitId");
-			if (traningCommitIds.size() < cutOff || traningCommitIds.contains(commitId)) {
+			if (traningCommitIds.size() < CUTOFF || traningCommitIds.contains(commitId)) {
 				trainingChanges++;
 				traningCommitIds.add(commitId);
+				if (traningCommitIds.size() == CUTOFF) {
+					cuttingCommit = commitId;
+				}
 				for (ChangeReducer r : traningReducers) {
 					r.add(c);
 				}
 			} else {
+				endCommit = commitId;
 				testingChanges++;
 				for (ChangeReducer r : testReducers) {
 					r.add(c);
@@ -65,6 +74,30 @@ public class ChangeSplitter {
 		LogManager.getLogger().info("Training changes: " + trainingChanges +
 				"\nTesting changes: " + testingChanges);
 		
+		String content = FileUtils.getContent(FILE_ID, cuttingCommit);
+		out.println("Last version in the training set:");
+		printStatics(content);
+		if (content != null) {
+			FileWriter fw = new FileWriter("TrainingEnd.java");
+			fw.write(content);
+			fw.close();			
+		}
+		
+		content = FileUtils.getContent(FILE_ID, endCommit);
+		out.println("Last version in the test set:");
+		printStatics(content);
+	}
+	
+	private void printStatics(String content) throws SQLException {
+		JavaParser parser = new JavaParser();
+		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(content, "File.java");
+		JavaStructureNode tree = astHelper.createStructureTree();
+		CompilationUnitDeclaration astNode = (CompilationUnitDeclaration) tree.getASTNode();
+		Indexer indexer = new Indexer();
+		astNode.traverse(indexer, astNode.scope);
+		out.println(String.valueOf(indexer.nodeIndex.get("CLASS").size()) + " classes");
+		out.println(String.valueOf(indexer.nodeIndex.get("FIELD").size()) + " fields");
+		out.println(String.valueOf(indexer.nodeIndex.get("METHOD").size()) + " methods");
 	}
 
 	/**
@@ -80,7 +113,7 @@ public class ChangeSplitter {
 		HashMap<String, Record> counters = new HashMap<String, Record>();
 		ChangeTypeCounter trainingCounter = new ChangeTypeCounter("training", counters),
 				testCounter = new ChangeTypeCounter("test", counters);
-		ChangeSplitter splitter = new ChangeSplitter(100, 
+		ChangeSplitter splitter = new ChangeSplitter(
 				Arrays.asList(trainingChangesPerCategory, trainingChangesPerCommit, trainingCounter),
 				Arrays.asList(testChangesPerCategory, testChangesPerCommit, testCounter));
 		splitter.split();
@@ -124,22 +157,6 @@ public class ChangeSplitter {
 			.append("training", freq.training)
 			.append("test", freq.test));
 		}
-		// getting the latest content
-		Set<Integer> commitIds = trainingChangesPerCommit.getCounters().keySet();
-		Statement stmt = DatabaseManager.getSQLConnection().createStatement();
-		ResultSet rs = stmt.executeQuery("SELECT id from scmlog " +
-				"where id in (" + StringUtils.join(commitIds, ',') + ") order by date desc limit 1");
-		rs.next();
-		int commitId = rs.getInt("id");
-		rs.close();
-		rs = stmt.executeQuery("SELECT content from content where file_id=" + 2996 + " and commit_id = " + commitId);
-		if (rs.next()) {
-			String content = rs.getString("content");
-			FileWriter fw = new FileWriter("TextArea.java");
-			fw.write(content);
-			fw.close();
-		} 
-
 	}
 
 }

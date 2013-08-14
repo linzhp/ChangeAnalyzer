@@ -13,12 +13,17 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 
-import static java.lang.System.out;
-
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
 import edu.ucsc.cs.utils.DatabaseManager;
 
+/**
+ * Things need to do to run a different simulation:
+ * 1. Update the Sampler parameters.
+ * 2. Update the number of commits to simulate
+ * @author linzhp
+ *
+ */
 public class Simulator {
 	private ASTHelper<JavaStructureNode> astHelper;
 	private HashMap<String, ArrayList<ASTNode>> nodeIndex;
@@ -31,7 +36,7 @@ public class Simulator {
 
 	public Simulator() throws SQLException {
 		JavaParser parser = new JavaParser();
-		astHelper = parser.getASTHelper(new File("TextArea.java"));
+		astHelper = parser.getASTHelper(new File("TrainingEnd.java"));
 		JavaStructureNode tree = astHelper.createStructureTree();
 		astNode = (CompilationUnitDeclaration) tree.getASTNode();
 		indexer = new Indexer();
@@ -40,7 +45,7 @@ public class Simulator {
 	}
 
 	public void run(int numCommits) {
-		Sampler sampler = new Sampler(2.151659, 1.617761);
+		Sampler sampler = new Sampler(2.152572, 1.703331);
 		for (int i = 0; i < numCommits; i++) {
 			List<BasicDBObject> changes = sampler.generateCommit();
 			for (BasicDBObject c : changes) {
@@ -91,7 +96,7 @@ public class Simulator {
 		DBCollection collection = mongo.getCollection("simulationResults");
 		for (int i = 0; i < 500; i++) {
 			Simulator simulator = new Simulator();
-			simulator.run(23);
+			simulator.run(50);
 			HashMap<String, ArrayList<ASTNode>> index = simulator.nodeIndex;
 			collection.insert(new BasicDBObject("methods", index.get("METHOD").size())
 			.append("fields", index.get("FIELD").size())

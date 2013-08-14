@@ -77,7 +77,7 @@ public class RepoFileDistiller {
 	}
 
 	private void processAdd(int fileID, int commitID) throws SQLException {
-		String newContent = getContent(fileID, commitID);
+		String newContent = FileUtils.getContent(fileID, commitID);
 		if (newContent == null)
 			logger.warning("Content for file " + fileID + " at commit_id "
 					+ commitID + " not found");
@@ -90,14 +90,14 @@ public class RepoFileDistiller {
 
 	private void processModify(int fileId, int commitId) throws SQLException,
 			IOException {
-		String newContent = getContent(fileId, commitId);
+		String newContent = FileUtils.getContent(fileId, commitId);
 		int previousCommitId = findPreviousCommitId(fileId, commitId);
 		FileContent fileContent = fileContentCache.get(fileId);
 		String oldContent = null;
 		if (fileContent != null && fileContent.commitID == previousCommitId) {
 			oldContent = fileContent.content;
 		} else if (previousCommitId != -1){
-			 oldContent = getContent(fileId, previousCommitId);			
+			 oldContent = FileUtils.getContent(fileId, previousCommitId);			
 		}
 		List<SourceCodeChange> changes = extractDiff(oldContent, newContent);
 		if (changes == null || changes.size() == 0) {
@@ -110,23 +110,7 @@ public class RepoFileDistiller {
 			fileContentCache.put(fileId, new FileContent(commitId, newContent));
 	}
 
-	private String getContent(int fileID, int commitID) throws SQLException {
-		Statement stmt = conn.createStatement();
-		String query = "select content from content where file_id=" + fileID
-				+ " and commit_id=" + commitID;
-		logger.fine(query);
-		ResultSet rs = stmt.executeQuery(query);
-		String result;
-		if (!rs.next()) {
-			result = null;
-			logger.warning("Content for file " + fileID + " at commit_id "
-					+ commitID + " not found");
-		} else {
-			result = rs.getString("content");
-		}
-		stmt.close();
-		return result;
-	}
+
 
 	/**
 	 * For each previous commit of this file (fileId), using Breath First Search

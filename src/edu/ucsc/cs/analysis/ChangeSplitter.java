@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
+import java.util.TreeSet;
 
 import static java.lang.System.out;
 
@@ -25,7 +25,6 @@ import edu.ucsc.cs.simulation.Indexer;
 import edu.ucsc.cs.simulation.JavaParser;
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.FileUtils;
-import edu.ucsc.cs.utils.LogManager;
 
 /**
  * Split changes into training set and test set
@@ -33,7 +32,9 @@ import edu.ucsc.cs.utils.LogManager;
  *
  */
 public class ChangeSplitter {
-	private final int CUTOFF = 73;
+	private final double SPLITTING_RATIO = .2;
+	private final int TRAINING_SIZE = 40;
+	private final int TEST_SIZE = 40;
 	private final int FILE_ID = 2996;
 	private List<ChangeReducer> traningReducers;
 	private List<ChangeReducer> testReducers;
@@ -48,31 +49,56 @@ public class ChangeSplitter {
 		DBCollection changesColl = mongo.getCollection("changes");
 		DBCursor allChanges = changesColl.find(new BasicDBObject("fileId", FILE_ID))
 				.sort(new BasicDBObject("date", 1));
-		HashSet<Integer> traningCommitIds = new HashSet<Integer>();
-		int trainingChanges = 0, testingChanges = 0;
-		int cuttingCommit = 0, endCommit = 0;
+		
+		TreeSet<Integer> commitIdSet = new TreeSet<Integer>();
 		while (allChanges.hasNext()) {
 			DBObject c = allChanges.next();
 			Integer commitId = (Integer)c.get("commitId");
-			if (traningCommitIds.size() < CUTOFF || traningCommitIds.contains(commitId)) {
-				trainingChanges++;
-				traningCommitIds.add(commitId);
-				if (traningCommitIds.size() == CUTOFF) {
-					cuttingCommit = commitId;
-				}
-				for (ChangeReducer r : traningReducers) {
-					r.add(c);
-				}
-			} else {
-				endCommit = commitId;
-				testingChanges++;
-				for (ChangeReducer r : testReducers) {
-					r.add(c);
+			commitIdSet.add(commitId);
+		}
+		Integer[] commitIds = commitIdSet.toArray(new Integer[commitIdSet.size()]);
+		double splittingPosition = commitIds.length * SPLITTING_RATIO;
+		if (splittingPosition < 1 || splittingPosition >= commitIds.length) {
+			System.err.println("Invalid splitting position");
+			System.exit(1);
+		}
+		int cuttingCommit = commitIds[(int)splittingPosition - 1], 
+				endCommit;
+		if (splittingPosition + TEST_SIZE >= commitIds.length) {
+			endCommit = commitIds[commitIds.length - 1];
+		} else {
+			endCommit = commitIds[(int)splittingPosition + TEST_SIZE];
+		}
+		
+		// Collecting training commits
+		for (int i = 1; i <= TRAINING_SIZE; i++) {
+			int index = (int)splittingPosition - i;
+			if (index < 0)
+				break;
+			int commitId = commitIds[index];
+			DBCursor changes = changesColl.find(new BasicDBObject("fileId", FILE_ID).append("commitId", commitId));
+			while (changes.hasNext()) {
+				DBObject c = changes.next();
+				for (ChangeReducer reducer : traningReducers) {
+					reducer.add(c);
 				}
 			}
 		}
-		LogManager.getLogger().info("Training changes: " + trainingChanges +
-				"\nTesting changes: " + testingChanges);
+		// Collecting test commits
+		for (int i = 0; i < TEST_SIZE; i++) {
+			int index = (int)splittingPosition + i;
+			if (index >= commitIds.length) {
+				break;
+			}
+			int commitId = commitIds[index];
+			DBCursor changes = changesColl.find(new BasicDBObject("fileId", FILE_ID).append("commitId", commitId));
+			while (changes.hasNext()) {
+				DBObject c = changes.next();
+				for (ChangeReducer reducer : testReducers) {
+					reducer.add(c);
+				}
+			}
+		}
 		
 		String content = FileUtils.getContent(FILE_ID, cuttingCommit);
 		out.println("Last version in the training set:");

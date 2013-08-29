@@ -34,9 +34,13 @@ import org.gjt.sp.jedit.input.AbstractInputHandler;
 import org.gjt.sp.jedit.input.DefaultInputHandlerProvider;
 import org.gjt.sp.jedit.input.InputHandlerProvider;
 import org.gjt.sp.jedit.input.TextAreaInputHandler;
-import org.gjt.sp.jedit.syntax.*;
+import org.gjt.sp.jedit.syntax.Chunk;
+import org.gjt.sp.jedit.syntax.TokenMarker;
+import org.gjt.sp.jedit.syntax.ParserRuleSet;
+import org.gjt.sp.jedit.syntax.ModeProvider;
 import org.gjt.sp.util.Log;
 import org.gjt.sp.util.StandardUtilities;
+import org.gjt.sp.util.SyntaxUtilities;
 
 import javax.swing.*;
 import javax.swing.event.CaretEvent;
@@ -53,6 +57,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Properties;
 import java.util.TooManyListenersException;
+
 import org.gjt.sp.jedit.IPropertyManager;
 import org.gjt.sp.jedit.JEditActionContext;
 import org.gjt.sp.jedit.JEditActionSet;
@@ -77,12 +82,13 @@ public class TextArea extends JComponent
 	//{{{ TextArea constructor
 	/**
 	 * Instantiate a TextArea.
+	 * @param propertyManager the property manager that contains informations like shortcut bindings
 	 * @param insideJEdit must be set to true if the textarea is embedded in jEdit
 	 */
-	public TextArea(boolean insideJEdit)
+	public TextArea(IPropertyManager propertyManager, boolean insideJEdit)
 	{
-		this(null);
-		actionContext = new JEditActionContext<JEditBeanShellAction, JEditActionSet<JEditBeanShellAction>>() 
+		this(propertyManager, null);
+		actionContext = new JEditActionContext<JEditBeanShellAction, JEditActionSet<JEditBeanShellAction>>()
 		{
 			@Override
 			public void invokeAction(EventObject evt, JEditBeanShellAction action)
@@ -90,30 +96,107 @@ public class TextArea extends JComponent
 				action.invoke(TextArea.this);
 			}
 		};
-		
+
 		setMouseHandler(new TextAreaMouseHandler(this));
 		TextAreaInputHandler inputHandler = new TextAreaInputHandler(this)
 		{
 			@Override
-			protected JEditBeanShellAction getAction(String action) 
+			protected JEditBeanShellAction getAction(String action)
 			{
-				return TextArea.this.actionContext.getAction(action);
+				return actionContext.getAction(action);
 			}
 		};
-		
+
 		inputHandlerProvider = new DefaultInputHandlerProvider(inputHandler);
 		if (insideJEdit)
 		{
 			return;
 		}
-		
-		Font font1 = new Font("Monospaced", Font.PLAIN, 12);
+
+
+		//{{{ init Style property manager
+		if (SyntaxUtilities.propertyManager == null)
+		{
+			final Properties props = new Properties();
+			InputStream in = TextArea.class.getResourceAsStream("/org/gjt/sp/jedit/jedit.props");
+			try
+			{
+				props.load(in);
+			}
+			catch (IOException e)
+			{
+				Log.log(Log.ERROR, TextArea.class, e);
+			}
+			finally
+			{
+				IOUtilities.closeQuietly(in);
+			}
+			SyntaxUtilities.propertyManager = new IPropertyManager()
+			{
+				public String getProperty(String name)
+				{
+					return props.getProperty(name);
+				}
+			};
+		}
+		//}}}
+
+		String defaultFont = SyntaxUtilities.propertyManager.getProperty("view.font");
+		int defaultFontSize;
+		try
+		{
+			defaultFontSize = Integer.parseInt(SyntaxUtilities.propertyManager.getProperty("view.fontsize"));
+		}
+		catch (NumberFormatException e)
+		{
+			defaultFontSize = 12;
+		}
+
+		/*Font font1 = new Font("Monospaced", Font.PLAIN, 12);
 		painter.setFont(font1);
 		SyntaxStyle[] styles = new SyntaxStyle[1];
-		styles[0] = new SyntaxStyle(Color.black, Color.white, font1);
-		painter.setStyles(styles);
+		styles[0] = new SyntaxStyle(Color.black, Color.white, font1);*/
+		//painter.setStyles(styles);
+
+
 		painter.setBlockCaretEnabled(false);
 
+		String name = SyntaxUtilities.propertyManager.getProperty("view.font");
+		String family = SyntaxUtilities.propertyManager.getProperty(name);
+		String sizeString = SyntaxUtilities.propertyManager.getProperty(name + "size");
+		String styleString = SyntaxUtilities.propertyManager.getProperty(name + "style");
+
+		//{{{ get font, copy of jEdit.getFontPropert()
+		Font font;
+		if(family == null || sizeString == null || styleString == null)
+			font = new Font("Monospaced", Font.PLAIN, 12);
+		else
+		{
+			int size, style;
+
+			try
+			{
+				size = Integer.parseInt(sizeString);
+			}
+			catch(NumberFormatException nf)
+			{
+				size = 12;
+			}
+
+			try
+			{
+				style = Integer.parseInt(styleString);
+			}
+			catch(NumberFormatException nf)
+			{
+				style = Font.PLAIN;
+			}
+			font = new Font(family,style,size);
+
+		} //}}}
+
+
+		painter.setFont(font);
 
 
 		painter.setStructureHighlightEnabled(true);
@@ -133,6 +216,7 @@ public class TextArea extends JComponent
 		painter.setAntiAlias(new AntiAlias(0));
 		painter.setFractionalFontMetricsEnabled(false);
 
+		painter.setStyles(SyntaxUtilities.loadStyles(defaultFont,defaultFontSize));
 
 		gutter.setExpanded(false);
 		gutter.setHighlightInterval(5);
@@ -151,7 +235,12 @@ public class TextArea extends JComponent
 		setCaretBlinkEnabled(true);
 		setElectricScroll(3);
 
-		FoldHandler.foldHandlerProvider = new DefaultFoldHandlerProvider();
+		DefaultFoldHandlerProvider foldHandlerProvider = new DefaultFoldHandlerProvider();
+
+		FoldHandler.foldHandlerProvider = foldHandlerProvider;
+		foldHandlerProvider.addFoldHandler(new ExplicitFoldHandler());
+		foldHandlerProvider.addFoldHandler(new IndentFoldHandler());
+		foldHandlerProvider.addFoldHandler(new DummyFoldHandler());
 		JEditBuffer buffer = new JEditBuffer();
 		TokenMarker tokenMarker = new TokenMarker();
 		tokenMarker.addRuleSet(new ParserRuleSet("text","MAIN"));
@@ -167,9 +256,10 @@ public class TextArea extends JComponent
 	//{{{ TextArea constructor
 	/**
 	 * Creates a new JEditTextArea.
+	 * @param propertyManager the property manager that contains informations like shortcut bindings
 	 * @param inputHandlerProvider the inputHandlerProvider
 	 */
-	public TextArea(InputHandlerProvider inputHandlerProvider)
+	public TextArea(IPropertyManager propertyManager, InputHandlerProvider inputHandlerProvider)
 	{
 		this.inputHandlerProvider = inputHandlerProvider;
 		enableEvents(AWTEvent.FOCUS_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
@@ -178,9 +268,8 @@ public class TextArea extends JComponent
 		selectionManager = new SelectionManager(this);
 		chunkCache = new ChunkCache(this);
 		painter = new TextAreaPainter(this);
-		repaintMgr = new FastRepaintManager(this,painter);
 		gutter = new Gutter(this);
-		gutter.setMouseActionsProvider(new MouseActions("gutter"));
+		gutter.setMouseActionsProvider(new MouseActions(propertyManager, "gutter"));
 		listenerList = new EventListenerList();
 		caretEvent = new MutableCaretEvent();
 		blink = true;
@@ -265,7 +354,7 @@ public class TextArea extends JComponent
 
 	//{{{ toString() method
 	@Override
-	public String toString() 
+	public String toString()
 	{
 		StringBuilder builder = new StringBuilder();
 		builder.append("caret: ").append(caret).append('\n');
@@ -299,7 +388,7 @@ public class TextArea extends JComponent
 	 */
 	public AbstractInputHandler getInputHandler()
 	{
-		
+
 		return inputHandlerProvider.getInputHandler();
 	} //}}}
 
@@ -313,7 +402,7 @@ public class TextArea extends JComponent
 	} //}}}
 
 	//{{{ getGutter() method
- 	/**
+	/**
 	 * Returns the gutter to the left of the text area or null if the gutter
 	 * is disabled
 	 */
@@ -454,13 +543,11 @@ public class TextArea extends JComponent
 				this.buffer.beginCompoundEdit();
 
 			chunkCache.setBuffer(buffer);
-			repaintMgr.setFastScroll(false);
 			propertiesChanged();
 
 			if(displayManager != null)
 			{
-				DisplayManager.releaseDisplayManager(
-					displayManager);
+				displayManager.release();
 			}
 
 			displayManager = DisplayManager.getDisplayManager(
@@ -495,10 +582,12 @@ public class TextArea extends JComponent
 	 * Drag and drop of text in jEdit is implementing using jEdit 1.4 APIs,
 	 * however since jEdit must run with Java 1.3, this class only has the
 	 * necessary support to call a hook method via reflection. This method
-	 * is called by the {@link org.gjt.sp.jedit.Java14} class to signal that
+	 * is called by the org.gjt.sp.jedit.Java14 class to signal that
 	 * a drag is in progress.
 	 * @since jEdit 4.2pre5
+	 * @deprecated the org.gjt.jedit.Java14 class no longer exists.
 	 */
+	@Deprecated
 	public boolean isDragInProgress()
 	{
 		return dndInProgress;
@@ -509,10 +598,12 @@ public class TextArea extends JComponent
 	 * Drag and drop of text in jEdit is implementing using jEdit 1.4 APIs,
 	 * however since jEdit must run with Java 1.3, this class only has the
 	 * necessary support to call a hook method via reflection. This method
-	 * is called by the {@link org.gjt.sp.jedit.Java14} class to signal that
+	 * is called by the org.gjt.sp.jedit.Java14 class to signal that
 	 * a drag is in progress.
 	 * @since jEdit 4.2pre5
+	 * @deprecated the org.gjt.jedit.Java14 class no longer exists.
 	 */
+	@Deprecated
 	public void setDragInProgress(boolean dndInProgress)
 	{
 		this.dndInProgress = dndInProgress;
@@ -879,7 +970,7 @@ public class TextArea extends JComponent
 				if(Debug.SCROLL_TO_DEBUG)
 					Log.log(Log.DEBUG,this,line + " == " + nextLine);
 				setFirstPhysicalLine(nextLine,
-					subregion + electricScroll
+					subregion + _electricScroll
 					- visibleLines
 					+ (lastLinePartial ? 2 : 1));
 			}
@@ -1960,7 +2051,7 @@ forward_scan:	do
 	 */
 	public String getSelectedText(Selection s)
 	{
-		StringBuffer buf = new StringBuffer(s.end - s.start);
+		StringBuilder buf = new StringBuilder(s.end - s.start);
 		s.getText(buffer,buf);
 		return buf.toString();
 	} //}}}
@@ -1978,7 +2069,7 @@ forward_scan:	do
 		if(sel.length == 0)
 			return null;
 
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for(int i = 0; i < sel.length; i++)
 		{
 			if(i != 0)
@@ -2197,9 +2288,28 @@ forward_scan:	do
 		if(offset == -1)
 			getToolkit().beep();
 		else
-			setCaretPosition(offset);
+			setCaretPosition(offset);		
 	} //}}}
 
+	// {{{ scrollAndCenterCaret() method
+	/**
+	 * Tries to scroll the textArea so that the caret is centered on the screen. 
+	 * Sometimes gets confused by folds but at least makes the caret visible and 
+	 * guesses better on subsequent attempts.
+	 * 
+	 * @since jEdit 4.3pre15
+	 */
+	public void scrollAndCenterCaret() 
+	{
+		if (!getDisplayManager().isLineVisible(getCaretLine()))
+			getDisplayManager().expandFold(getCaretLine(),true);
+		int physicalLine = getCaretLine();
+		int midPhysicalLine = getPhysicalLineOfScreenLine(visibleLines >> 1);
+		int diff = physicalLine -  midPhysicalLine;
+		setFirstLine(getFirstLine() + diff);
+		requestFocus();
+	} // }}}
+	
 	//{{{ setCaretPosition() method
 	/**
 	 * Sets the caret position and deactivates the selection.
@@ -3842,6 +3952,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	/**
 	 * Like {@link DisplayManager#expandFold(int,boolean)}, but
 	 * also moves the caret to the first sub-fold.
+	 * @param fully If true, all subfolds will also be expanded
 	 * @since jEdit 4.0pre3
 	 */
 	public void expandFold(boolean fully)
@@ -3925,6 +4036,8 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	//{{{ addExplicitFold() method
 	/**
 	 * Surrounds the selection with explicit fold markers.
+	 * @throws TextAreaException an exception thrown if the folding mode is
+	 * not explicit
 	 * @since jEdit 4.0pre3
 	 */
 	public void addExplicitFold() throws TextAreaException
@@ -4012,50 +4125,6 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		}
 
 		selectNone();
-	} //}}}
-
-	//{{{ rangeLineComment() method
-	/**
-	 * This method will surround each selected line with a range comment.
-	 * This is used when calling line comment if the edit mode doesn't have
-	 * a line comment property
-	 * @since jEdit 4.3pre10
-	 */
-	private void rangeLineComment()
-	{
-		String commentStart = buffer.getContextSensitiveProperty(caret,"commentStart");
-		String commentEnd = buffer.getContextSensitiveProperty(caret,"commentEnd");
-		if(!buffer.isEditable() || commentStart == null || commentEnd == null
-			|| commentStart.length() == 0 || commentEnd.length() == 0)
-		{
-			getToolkit().beep();
-			return;
-		}
-
-		commentStart += ' ';
-		commentEnd = ' ' + commentEnd;
-
-
-		try
-		{
-			buffer.beginCompoundEdit();
-			int[] lines = getSelectedLines();
-			for(int i = 0; i < lines.length; i++)
-			{
-				String text = getLineText(lines[i]);
-				if (text.trim().length() == 0)
-					continue;
-				buffer.insert(getLineEndOffset(lines[i]) - 1,
-					commentEnd);
-				buffer.insert(getLineStartOffset(lines[i])
-					+ StandardUtilities.getLeadingWhiteSpace(text),
-					commentStart);
-			}
-		}
-		finally
-		{
-			buffer.endCompoundEdit();
-		}
 	} //}}}
 
 	//{{{ rangeComment() method
@@ -4410,7 +4479,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		if(getSelectionCount() == 0)
 		{
 			// if caret is inside leading whitespace, indent.
-			String text = buffer.getLineText(caretLine);
+			CharSequence text = buffer.getLineSegment(caretLine);
 			int start = buffer.getLineStartOffset(caretLine);
 			int whiteSpace = StandardUtilities.getLeadingWhiteSpace(text);
 
@@ -4468,76 +4537,57 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 
 	//{{{ joinLines() method
 	/**
-	 * Joins the current and the next line.
+	 * Joins the current and the next line, or joins all lines in
+	 * selections.
 	 * @since jEdit 2.7pre2
 	 */
 	public void joinLines()
 	{
-		if (getSelectionCount() == 0)
+		if(!buffer.isEditable())
 		{
-			int end = getLineEndOffset(caretLine);
-			if(!buffer.isEditable() || end > buffer.getLength())
-			{
-				getToolkit().beep();
-				return;
-			}
-
-			try
-			{
-				buffer.beginCompoundEdit();
-				String nextLineText = buffer.getLineText(caretLine + 1);
-				buffer.remove(end - 1,StandardUtilities.getLeadingWhiteSpace(
-					nextLineText) + 1);
-				if (nextLineText.length() != 0)
-					buffer.insert(end - 1, " ");
-			}
-			finally
-			{
-				buffer.endCompoundEdit();
-			}
-			setCaretPosition(end - 1);
+			getToolkit().beep();
+			return;
 		}
-		else
+
+		try
 		{
-			try
+			buffer.beginCompoundEdit();
+			boolean doneForSelection = false;
+			for (Selection selection: selectionManager.getSelection())
 			{
-				buffer.beginCompoundEdit();
-				Selection[] selections = selectionManager.getSelection();
-				for (int i = 0; i < selections.length; i++)
+				while (selection.startLine < selection.endLine)
 				{
-					Selection selection = selections[i];
-					joinLines(selection);
+					// Edit from end of selection to
+					// minimize invalidations and
+					// recaluculations of cached line info
+					// such as indent level or fold level.
+					joinLineAt(selection.endLine - 1);
+					doneForSelection = true;
 				}
 			}
-			finally
+			// If nothing selected or all selections span only
+			// one line, join the line at the caret.
+			if (!doneForSelection)
 			{
-				buffer.endCompoundEdit();
+				int end = getLineEndOffset(caretLine);
+
+				// Nothing to do if the caret is on the last line.
+				if (end > buffer.getLength())
+				{
+					getToolkit().beep();
+					return;
+				}
+
+				joinLineAt(caretLine);
+				if(!multi)
+					selectNone();
+				moveCaretPosition(end - 1);
 			}
 		}
-	} //}}}
-
-	//{{{ joinLines() method
-	/**
-	 * Join the lines in the selection.
-	 * If you use this method you have to lock the buffer in compound edit mode
-	 *
-	 * @param selection the selection
-	 * @since jEdit 4.3pre8
-	 */
-	private void joinLines(Selection selection)
-	{
-		do
+		finally
 		{
-			if (selection.startLine == buffer.getLineCount() - 1)
-				return;
-			int end = getLineEndOffset(selection.startLine);
-			String nextLineText = buffer.getLineText(selection.startLine + 1);
-			buffer.remove(end - 1,StandardUtilities.getLeadingWhiteSpace(
-				nextLineText) + 1);
-			if (nextLineText.length() != 0)
-				buffer.insert(end - 1, " ");
+			buffer.endCompoundEdit();
 		}
-		while (selection.startLine < selection.endLine);
 	} //}}}
 	//}}}
 
@@ -4545,16 +4595,19 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 
 	//{{{ addLeftOfScrollBar() method
 	/**
-	 * Adds a component to the box left of the vertical scroll bar. The
-	 * ErrorList plugin uses this to show a global error overview, for
-	 * example.
+	 * Adds a component to the left side of the box left of the vertical
+	 * scroll bar. The ErrorList plugin uses this to show a global error
+	 * overview, for example.  It is possible for more than one component
+	 * to be added, each is added to the left side of the box in turn.
+	 * Adding to the left ensures the scrollbar is always right of all added
+	 * components.
 	 *
 	 * @param comp The component
 	 * @since jEdit 4.2pre1
 	 */
 	public void addLeftOfScrollBar(Component comp)
 	{
-		verticalBox.add(comp,verticalBox.getComponentCount() - 1);
+		verticalBox.add(comp, 0);
 	} //}}}
 
 	//{{{ removeLeftOfScrollBar() method
@@ -4667,7 +4720,6 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ Input method support
-	private InputMethodSupport inputMethodSupport;
 	@Override
 	public InputMethodRequests getInputMethodRequests()
 	{
@@ -4741,17 +4793,16 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 			displayManager.notifyScreenLineChanges();
 		}
 
-		repaintMgr.setFastScroll(false);
 		chunkCache.invalidateAll();
 		gutter.repaint();
 		painter.repaint();
 	} //}}}
-	
+
 	//{{{ addActionSet() method
 	/**
 	 * Adds a new action set to the textarea's list of ActionSets.
 	 * Call this only on standalone textarea
-	 * 
+	 *
 	 * @param actionSet the actionSet to add
 	 * @since jEdit 4.3pre13
 	 */
@@ -4778,7 +4829,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		else
 			return caret;
 	} //}}}
-	
+
 	//{{{ getMarkLine() method
 	/**
 	 * @deprecated Do not use.
@@ -4797,7 +4848,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		else
 			return caretLine;
 	} //}}}
-	
+
 	//{{{ Package-private members
 
 	static TextArea focusedComponent;
@@ -4806,11 +4857,10 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	final Segment lineSegment = new Segment();
 	MouseInputAdapter mouseHandler;
 	final ChunkCache chunkCache;
-	final FastRepaintManager repaintMgr;
 	DisplayManager displayManager;
 	final SelectionManager selectionManager;
-	/** 
-	 * The action context. 
+	/**
+	 * The action context.
 	 * It is used only when the textarea is standalone
 	 */
 	private JEditActionContext<JEditBeanShellAction,JEditActionSet<JEditBeanShellAction>> actionContext;
@@ -4903,7 +4953,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		else
 		{
 			visibleLines = height / lineHeight;
-			lastLinePartial = (height % lineHeight != 0);
+			lastLinePartial = height % lineHeight != 0;
 			if(lastLinePartial)
 				visibleLines++;
 		}
@@ -4920,7 +4970,6 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	//{{{ foldStructureChanged() method
 	void foldStructureChanged()
 	{
-		repaintMgr.setFastScroll(false);
 		chunkCache.invalidateAll();
 		recalculateLastPhysicalLine();
 		repaint();
@@ -5087,6 +5136,8 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	private boolean caretBlinks;
 	private InputHandlerProvider inputHandlerProvider;
 
+	private InputMethodSupport inputMethodSupport;
+
 	/** The last visible physical line index. */
 	private int physLastLine;
 
@@ -5169,8 +5220,6 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		if(!buffer.isTransactionInProgress())
 			_finishCaretUpdate();
 		/* otherwise DisplayManager.BufferChangeHandler calls */
-
-		repaintMgr.setFastScroll(false);
 	} //}}}
 
 	//{{{ fireCaretEvent() method
@@ -5285,7 +5334,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		moveCaretPosition(newCaret);
 	}//}}}
 
-
+	//{{{ lineContainsSpaceAndTabs() method
 	/**
 	 * Check if the line contains only spaces and tabs.
 	 *
@@ -5308,7 +5357,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 			}
 		}
 		return true;
-	}
+	} //}}}
 
 	//{{{ insert() method
 	protected void insert(String str, boolean indent)
@@ -5582,7 +5631,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ getRectParams() method
-	static class RectParams
+	private static class RectParams
 	{
 		final int extraStartVirt;
 		final int extraEndVirt;
@@ -5889,7 +5938,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 			buffer.insert(caretEnd,end);
 		else
 		{
-			String lineText = buffer.getText(caretEnd - 1, 1);
+			CharSequence lineText = buffer.getSegment(caretEnd - 1, 1);
 			if (Character.isWhitespace(lineText.charAt(0)))
 				buffer.insert(caretEnd, end);
 			else
@@ -5900,12 +5949,74 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 
 		return caretBack;
 	} //}}}
+
+	//{{{ rangeLineComment() method
+	/**
+	 * This method will surround each selected line with a range comment.
+	 * This is used when calling line comment if the edit mode doesn't have
+	 * a line comment property
+	 * @since jEdit 4.3pre10
+	 */
+	private void rangeLineComment()
+	{
+		String commentStart = buffer.getContextSensitiveProperty(caret,"commentStart");
+		String commentEnd = buffer.getContextSensitiveProperty(caret,"commentEnd");
+		if(!buffer.isEditable() || commentStart == null || commentEnd == null
+			|| commentStart.length() == 0 || commentEnd.length() == 0)
+		{
+			getToolkit().beep();
+			return;
+		}
+
+		commentStart += ' ';
+		commentEnd = ' ' + commentEnd;
+
+
+		try
+		{
+			buffer.beginCompoundEdit();
+			int[] lines = getSelectedLines();
+			for(int i = 0; i < lines.length; i++)
+			{
+				String text = getLineText(lines[i]);
+				if (text.trim().length() == 0)
+					continue;
+				buffer.insert(getLineEndOffset(lines[i]) - 1,
+					commentEnd);
+				buffer.insert(getLineStartOffset(lines[i])
+					+ StandardUtilities.getLeadingWhiteSpace(text),
+					commentStart);
+			}
+		}
+		finally
+		{
+			buffer.endCompoundEdit();
+		}
+	} //}}}
+
+	//{{{ joinLine() method
+	/**
+	 * Join a line with the next line.
+	 * If you use this method you have to lock the buffer in compound edit mode.
+	 * @param line the line number that will be joined with the next line
+	 */
+	private void joinLineAt(int line)
+	{
+		if (line >= buffer.getLineCount() - 1)
+			return;
+		int end = getLineEndOffset(line);
+		CharSequence nextLineText = buffer.getLineSegment(line + 1);
+		buffer.remove(end - 1,StandardUtilities.getLeadingWhiteSpace(
+			nextLineText) + 1);
+		if (nextLineText.length() != 0)
+			buffer.insert(end - 1, " ");
+	} //}}}
 	//}}}
 
 	//{{{ Inner classes
 
 	//{{{ CaretBlinker class
-	static class CaretBlinker implements ActionListener
+	private static class CaretBlinker implements ActionListener
 	{
 		//{{{ actionPerformed() method
 		public void actionPerformed(ActionEvent evt)
@@ -5916,7 +6027,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ MutableCaretEvent class
-	class MutableCaretEvent extends CaretEvent
+	private class MutableCaretEvent extends CaretEvent
 	{
 		//{{{ MutableCaretEvent constructor
 		MutableCaretEvent()
@@ -5925,12 +6036,14 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		} //}}}
 
 		//{{{ getDot() method
+		@Override
 		public int getDot()
 		{
 			return getCaretPosition();
 		} //}}}
 
 		//{{{ getMark() method
+		@Override
 		public int getMark()
 		{
 			return getMarkPosition();
@@ -5938,7 +6051,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ AdjustHandler class
-	class AdjustHandler implements AdjustmentListener
+	private class AdjustHandler implements AdjustmentListener
 	{
 		//{{{ adjustmentValueChanged() method
 		public void adjustmentValueChanged(AdjustmentEvent evt)
@@ -5954,7 +6067,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ FocusHandler class
-	class FocusHandler implements FocusListener
+	private class FocusHandler implements FocusListener
 	{
 		//{{{ focusGained() method
 		public void focusGained(FocusEvent evt)
@@ -5994,7 +6107,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ MouseWheelHandler class
-	class MouseWheelHandler implements MouseWheelListener
+	private class MouseWheelHandler implements MouseWheelListener
 	{
 		public void mouseWheelMoved(MouseWheelEvent e)
 		{
@@ -6041,6 +6154,51 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		}
 	} //}}}
 
+	//{{{ StandaloneActionSet class
+	/**
+	 * The actionSet for standalone textArea.
+	 * @author Matthieu Casanova
+	 */
+	private static class StandaloneActionSet extends JEditActionSet<JEditBeanShellAction>
+	{
+		private final IPropertyManager iPropertyManager;
+		private final TextArea textArea;
+
+		private StandaloneActionSet(IPropertyManager iPropertyManager, TextArea textArea)
+		{
+			super(null, TextArea.class.getResource("textarea.actions.xml"));
+			this.iPropertyManager = iPropertyManager;
+			this.textArea = textArea;
+		}
+
+		@Override
+		protected JEditBeanShellAction[] getArray(int size)
+		{
+			return new JEditBeanShellAction[size];
+		}
+
+		@Override
+		protected String getProperty(String name)
+		{
+			return iPropertyManager.getProperty(name);
+		}
+
+		public AbstractInputHandler getInputHandler()
+		{
+			return textArea.getInputHandler();
+		}
+
+		@Override
+		protected JEditBeanShellAction createBeanShellAction(String actionName,
+								     String code,
+								     String selected,
+								     boolean noRepeat,
+								     boolean noRecord,
+								     boolean noRememberLast)
+		{
+			return new JEditBeanShellAction(actionName,code,selected,noRepeat,noRecord,noRememberLast);
+		}
+	} //}}}
 	//}}}
 
 	//{{{ Class initializer
@@ -6061,70 +6219,49 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		structureTimer.setInitialDelay(100);
 		structureTimer.setRepeats(false);
 	} //}}}
-	
+
 	//{{{ _createTextArea() method
+	/**
+	 * Create a standalone textArea.
+	 * @param insidejEdit true if we are in jEdit, false otherwise
+	 * @param iPropertyManager the property manager that will provide properties
+	 * @return the new textarea
+	 */
 	public static TextArea _createTextArea(boolean insidejEdit, final IPropertyManager iPropertyManager)
 	{
-		final TextArea textArea = new TextArea(insidejEdit);
+		final TextArea textArea = new TextArea(iPropertyManager, insidejEdit);
 		textArea.setMouseHandler(new TextAreaMouseHandler(textArea));
-		textArea.setTransferHandler(new TextAreaTransferHandler());
+		// todo : make TextareaTransferHandler standalone
+//		textArea.setTransferHandler(new TextAreaTransferHandler());
 
-		JEditActionSet<JEditBeanShellAction> actionSet = new JEditActionSet<JEditBeanShellAction>(
-				null, TextArea.class.getResource("textarea.actions.xml")) 
-		{
-			@Override
-			protected JEditBeanShellAction[] getArray(int size) 
-			{
-				return new JEditBeanShellAction[size];
-			}
+		StandaloneActionSet actionSet = new StandaloneActionSet(iPropertyManager, textArea);
 
-			@Override
-			protected String getProperty(String name)
-			{
-				return iPropertyManager.getProperty(name);
-			}
-
-			public AbstractInputHandler getInputHandler()
-			{
-				return textArea.getInputHandler();
-			}
-			
-			protected JEditBeanShellAction createBeanShellAction(String actionName,
-									     String code,
-									     String selected,
-									     boolean noRepeat,
-									     boolean noRecord,
-									     boolean noRememberLast)
-			{
-				return new JEditBeanShellAction(actionName,code,selected,noRepeat,noRecord,noRememberLast);
-			}
-		};
 		textArea.addActionSet(actionSet);
 		actionSet.load();
 		actionSet.initKeyBindings();
 		return textArea;
 	} //}}}
-	
+
 	//{{{ createTextArea() method
 	/**
 	 * Create a standalone TextArea.
 	 * If you want to use it in jEdit, please use {@link org.gjt.sp.jedit.jEdit#createTextArea()}
-	 * 
+	 *
 	 * @param iPropertyManager the properties where key bindings are stored
 	 * @return a textarea
 	 * @since 4.3pre13
 	 */
 	public static TextArea createTextArea(IPropertyManager iPropertyManager)
 	{
-		final TextArea textArea = _createTextArea(false, iPropertyManager);
+		TextArea textArea = _createTextArea(false, iPropertyManager);
 		return textArea;
 	} // }}}
-	
+
 	//{{{ createTextArea() method
 	/**
 	 * Create a standalone TextArea.
 	 * If you want to use it in jEdit, please use {@link org.gjt.sp.jedit.jEdit#createTextArea()}
-	 * 
+	 *
 	 * @return a textarea
 	 * @since 4.3pre13
 	 */
@@ -6139,16 +6276,16 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		catch (IOException e)
 		{
 			Log.log(Log.ERROR, TextArea.class, e);
-		}		
+		}
 		finally
 		{
 			IOUtilities.closeQuietly(in);
 		}
-		TextArea textArea = _createTextArea(false, new IPropertyManager() 
+		TextArea textArea = _createTextArea(false, new IPropertyManager()
 		{
-			public String getProperty(String name) 
+			public String getProperty(String name)
 			{
-				return (String) props.get(name);
+				return props.getProperty(name);
 			}
 		});
 		textArea.getBuffer().setProperty("folding", "explicit");
@@ -6160,7 +6297,12 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	{
 		JFrame frame = new JFrame();
 		TextArea text = createTextArea();
+		Mode mode = new Mode("xml");
+		mode.setProperty("file","modes/xml.xml");
+		ModeProvider.instance.addMode(mode);
+		text.getBuffer().setMode(mode);
 		frame.getContentPane().add(text);
+		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		frame.pack();
 		frame.setVisible(true);
 	} //}}}

@@ -11,7 +11,7 @@ public class ChangesPerCategory implements ChangeReducer {
 		return counters;
 	}
 	@Override
-	public void add(DBObject change) {
+	public void add(int epochId, DBObject change) {
 		BasicDBObject changeCategory = new BasicDBObject("changeType", change.get("changeType"))
 		.append("entity", change.get("entity")).append("changeClass", change.get("changeClass"));
 		switch ((String)change.get("changeClass")) {

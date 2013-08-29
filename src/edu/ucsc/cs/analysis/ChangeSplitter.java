@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
@@ -11,6 +12,10 @@ import java.util.TreeSet;
 import static java.lang.System.out;
 
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.joda.time.DateTime;
+import org.joda.time.Days;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
@@ -32,46 +37,108 @@ import edu.ucsc.cs.utils.FileUtils;
  *
  */
 public class ChangeSplitter {
-	private final double SPLITTING_RATIO = .2;
-	private final int TRAINING_SIZE = 40;
-	private final int TEST_SIZE = 40;
 	private final int FILE_ID = 2996;
 	private List<ChangeReducer> traningReducers;
 	private List<ChangeReducer> testReducers;
+	private DBCollection changesColl;
 	public ChangeSplitter(List<ChangeReducer> trainingReducers,
 			List<ChangeReducer> testReducers) {
 		this.traningReducers = trainingReducers;
 		this.testReducers = testReducers;
+		DB mongo = DatabaseManager.getMongoDB();
+		changesColl = mongo.getCollection("changes");
 	}
 	
-	public void split() throws SQLException, IOException {
-		DB mongo = DatabaseManager.getMongoDB();
-		DBCollection changesColl = mongo.getCollection("changes");
+	public void splitByTime(double splitRatio, int trainingSize, int testSize, int daysInEpoch) throws SQLException, IOException {
+		@SuppressWarnings("unchecked")
+		List<String> dates = changesColl.distinct("date");
+		String lastDateStr = Collections.max(dates);
+		String firstDateStr = Collections.min(dates);
+		DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
+		DateTime startDate = fmt.parseDateTime(firstDateStr);
+		Days totalDays = Days.daysBetween(startDate, fmt.parseDateTime(lastDateStr));
+		double daysBeforeSplit = totalDays.getDays() * splitRatio;
+		DateTime splitDate = startDate.plusDays((int)daysBeforeSplit);
+		String splitDateStr = fmt.print(splitDate);
+		int cuttingCommit = -1;
+		// Collecting training changes
+		DBCursor trainingChanges = changesColl.find(new BasicDBObject("fileId", FILE_ID).
+				append("date", new BasicDBObject("$lte", splitDateStr)))
+				.sort(new BasicDBObject("date", -1));
+		while (trainingChanges.hasNext()) {
+			DBObject c = trainingChanges.next();
+			if (cuttingCommit == -1) {
+				cuttingCommit = (int)c.get("commitId");
+			}
+			Days days = Days.daysBetween(fmt.parseDateTime((String)c.get("date")), splitDate);
+			int epochId = days.getDays() / daysInEpoch + 1;
+			if (epochId > trainingSize) {
+				break;
+			}
+			// making the epochId in training set negative
+			epochId *= -1;
+			for (ChangeReducer reducer : traningReducers) {
+				reducer.add(epochId, c);
+			}
+		}
+		// Collecting test changes
+		DBCursor testChanges = changesColl.find(new BasicDBObject("fileId", FILE_ID)
+		.append("date", new BasicDBObject("$gt", splitDateStr)))
+		.sort(new BasicDBObject("date", 1));
+		int endCommit = -1;
+		while (testChanges.hasNext()) {
+			DBObject c = testChanges.next();
+			endCommit = (int)c.get("commitId");
+			Days days = Days.daysBetween(splitDate, fmt.parseDateTime((String)c.get("date")));
+			int epochId = days.getDays() / daysInEpoch + 1;
+			if (epochId > testSize) {
+				break;
+			}
+			for (ChangeReducer reducer : testReducers) {
+				reducer.add(epochId, c);
+			}
+		}
+		
+		String content = FileUtils.getContent(FILE_ID, cuttingCommit);
+		out.println("Last version in the training set:");
+		printStatics(content);
+		if (content != null) {
+			FileWriter fw = new FileWriter("TrainingEnd.java");
+			fw.write(content);
+			fw.close();			
+		}
+		
+		content = FileUtils.getContent(FILE_ID, endCommit);
+		out.println("Last version in the test set:");
+		printStatics(content);
+
+	}
+	
+	public void splitByCommit(double splitRatio, int trainingSize, int testSize) throws SQLException, IOException {
+		TreeSet<Integer> commitIdSet = new TreeSet<Integer>();
 		DBCursor allChanges = changesColl.find(new BasicDBObject("fileId", FILE_ID))
 				.sort(new BasicDBObject("date", 1));
-		
-		TreeSet<Integer> commitIdSet = new TreeSet<Integer>();
 		while (allChanges.hasNext()) {
 			DBObject c = allChanges.next();
 			Integer commitId = (Integer)c.get("commitId");
 			commitIdSet.add(commitId);
 		}
 		Integer[] commitIds = commitIdSet.toArray(new Integer[commitIdSet.size()]);
-		double splittingPosition = commitIds.length * SPLITTING_RATIO;
+		double splittingPosition = commitIds.length * splitRatio;
 		if (splittingPosition < 1 || splittingPosition >= commitIds.length) {
 			System.err.println("Invalid splitting position");
 			System.exit(1);
 		}
 		int cuttingCommit = commitIds[(int)splittingPosition - 1], 
 				endCommit;
-		if (splittingPosition + TEST_SIZE >= commitIds.length) {
+		if (splittingPosition + testSize >= commitIds.length) {
 			endCommit = commitIds[commitIds.length - 1];
 		} else {
-			endCommit = commitIds[(int)splittingPosition + TEST_SIZE];
+			endCommit = commitIds[(int)splittingPosition + testSize];
 		}
 		
 		// Collecting training commits
-		for (int i = 1; i <= TRAINING_SIZE; i++) {
+		for (int i = 1; i <= trainingSize; i++) {
 			int index = (int)splittingPosition - i;
 			if (index < 0)
 				break;
@@ -80,12 +147,12 @@ public class ChangeSplitter {
 			while (changes.hasNext()) {
 				DBObject c = changes.next();
 				for (ChangeReducer reducer : traningReducers) {
-					reducer.add(c);
+					reducer.add(commitId, c);
 				}
 			}
 		}
 		// Collecting test commits
-		for (int i = 0; i < TEST_SIZE; i++) {
+		for (int i = 0; i < testSize; i++) {
 			int index = (int)splittingPosition + i;
 			if (index >= commitIds.length) {
 				break;
@@ -95,7 +162,7 @@ public class ChangeSplitter {
 			while (changes.hasNext()) {
 				DBObject c = changes.next();
 				for (ChangeReducer reducer : testReducers) {
-					reducer.add(c);
+					reducer.add(commitId, c);
 				}
 			}
 		}
@@ -132,8 +199,8 @@ public class ChangeSplitter {
 	 * @throws IOException 
 	 */
 	public static void main(String[] args) throws SQLException, IOException {
-		ChangesPerCommit trainingChangesPerCommit = new ChangesPerCommit(),
-				testChangesPerCommit = new ChangesPerCommit();
+		ChangesPerEpoch trainingChangesPerCommit = new ChangesPerEpoch(),
+				testChangesPerCommit = new ChangesPerEpoch();
 		ChangesPerCategory trainingChangesPerCategory = new ChangesPerCategory(),
 				testChangesPerCategory = new ChangesPerCategory();
 		HashMap<String, Record> counters = new HashMap<String, Record>();
@@ -142,11 +209,11 @@ public class ChangeSplitter {
 		ChangeSplitter splitter = new ChangeSplitter(
 				Arrays.asList(trainingChangesPerCategory, trainingChangesPerCommit, trainingCounter),
 				Arrays.asList(testChangesPerCategory, testChangesPerCommit, testCounter));
-		splitter.split();
+		splitter.splitByCommit(.4, 40, 40);
 		
 		DB mongo = DatabaseManager.getMongoDB();
 		
-		DBCollection collection = mongo.getCollection("changesPerCommit");
+		DBCollection collection = mongo.getCollection("changesPerEpoch");
 		HashMap<Integer, Integer> changesPerCommit = trainingChangesPerCommit.getCounters();
 		for (Integer key: changesPerCommit.keySet()) {
 			collection.insert(new BasicDBObject("commit_id", key)

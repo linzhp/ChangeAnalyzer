@@ -1,9 +1,15 @@
 package edu.ucsc.cs.analysis;
 
-import java.util.ArrayList;
+import org.joda.time.Days;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
-import org.apache.commons.math3.distribution.EnumeratedDistribution;
-import org.apache.commons.math3.util.*;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+
+import edu.ucsc.cs.utils.DatabaseManager;
 
 public class ZipfTest {
 
@@ -11,11 +17,9 @@ public class ZipfTest {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		ArrayList<Pair<String, Double>> probs = new ArrayList<Pair<String, Double>>();
-		probs.add(new Pair<String, Double>("insert statement", 700.0));
-		probs.add(new Pair<String, Double>("delete statement", 400.0));
-		EnumeratedDistribution<String> dist = new EnumeratedDistribution<String>(probs);
-		System.out.println(dist.sample());
+		DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
+		Days days = Days.daysBetween(fmt.parseDateTime("2006-10-02 21:33:17"), fmt.parseDateTime("2012-06-18 22:54:17"));
+		System.out.println(days.getDays());
 	}
 
 }

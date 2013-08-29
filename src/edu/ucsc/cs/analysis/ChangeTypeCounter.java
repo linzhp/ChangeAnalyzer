@@ -16,7 +16,7 @@ public class ChangeTypeCounter implements ChangeReducer {
 	}
 	
 	@Override
-	public void add(DBObject change) {
+	public void add(int epochId, DBObject change) {
 		String changeType = (String)change.get("changeType");
 		if (counters.containsKey(changeType)) {
 			counters.get(changeType).increase(setName, 1);

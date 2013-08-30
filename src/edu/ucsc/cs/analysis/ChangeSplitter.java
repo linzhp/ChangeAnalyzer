@@ -203,12 +203,20 @@ public class ChangeSplitter {
 				testChangesPerCommit = new ChangesPerEpoch();
 		ChangesPerCategory trainingChangesPerCategory = new ChangesPerCategory(),
 				testChangesPerCategory = new ChangesPerCategory();
+		ChangesPerCategoryEpoch trainingChangesPerCategoryEpoch = new ChangesPerCategoryEpoch(),
+				testChangesPerCategoryEpoch = new ChangesPerCategoryEpoch();
 		HashMap<String, Record> counters = new HashMap<String, Record>();
 		ChangeTypeCounter trainingCounter = new ChangeTypeCounter("training", counters),
 				testCounter = new ChangeTypeCounter("test", counters);
 		ChangeSplitter splitter = new ChangeSplitter(
-				Arrays.asList(trainingChangesPerCategory, trainingChangesPerCommit, trainingCounter),
-				Arrays.asList(testChangesPerCategory, testChangesPerCommit, testCounter));
+				Arrays.asList(trainingChangesPerCategory, 
+						trainingChangesPerCommit, 
+						trainingCounter,
+						trainingChangesPerCategoryEpoch),
+				Arrays.asList(testChangesPerCategory, 
+						testChangesPerCommit, 
+						testCounter,
+						testChangesPerCategoryEpoch));
 		splitter.splitByCommit(.4, 40, 40);
 		
 		DB mongo = DatabaseManager.getMongoDB();
@@ -249,6 +257,21 @@ public class ChangeSplitter {
 			collection.insert(new BasicDBObject("_id", changeType)
 			.append("training", freq.training)
 			.append("test", freq.test));
+		}
+		
+		collection = mongo.getCollection("changesPerCategoryEpoch");
+		HashMap<BasicDBObject, Integer> changesPerCategoryEpoch = trainingChangesPerCategoryEpoch.getCounters();
+		for (BasicDBObject key: changesPerCategoryEpoch.keySet()) {
+			collection.insert(new BasicDBObject("change", key)
+			.append("freq", changesPerCategoryEpoch.get(key))
+			.append("set", "training"));			
+		}
+		
+		changesPerCategoryEpoch = testChangesPerCategoryEpoch.getCounters();
+		for (BasicDBObject key: changesPerCategoryEpoch.keySet()) {
+			collection.insert(new BasicDBObject("change", key)
+			.append("freq", changesPerCategoryEpoch.get(key))
+			.append("set", "test"));						
 		}
 	}
 

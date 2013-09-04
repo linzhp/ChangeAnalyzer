@@ -11,8 +11,8 @@
 	<classpathentry kind="lib" path="lib/mongo-java-driver-2.11.2.jar" sourcepath="lib/mongo-java-driver-2.11.2-sources.jar"/>
 	<classpathentry kind="lib" path="lib/commons-codec-1.8.jar"/>
 	<classpathentry kind="lib" path="lib/joda-time-2.3.jar" sourcepath="lib/joda-time-2.3-sources.jar"/>
+	<classpathentry kind="lib" path="lib/ecj-4.2.1.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/changedistiller"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
-	<classpathentry kind="lib" path="/home/linzhp/.m2/repository/org/eclipse/jdt/core/compiler/ecj/4.2.1/ecj-4.2.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

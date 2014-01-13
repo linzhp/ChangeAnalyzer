@@ -9,12 +9,14 @@ import java.util.List;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 
+import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
+import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 
-import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+import edu.ucsc.cs.analysis.JavaParser;
 import edu.ucsc.cs.utils.DatabaseManager;
 
 /**
@@ -36,7 +38,7 @@ public class Simulator {
 
 	public Simulator() throws SQLException {
 		JavaParser parser = new JavaParser();
-		astHelper = parser.getASTHelper(new File("TrainingEnd.java"));
+		astHelper = parser.getASTHelper(new File("TrainingEnd.java"), "1.6");
 		JavaStructureNode tree = astHelper.createStructureTree();
 		astNode = (CompilationUnitDeclaration) tree.getASTNode();
 		indexer = new Indexer();

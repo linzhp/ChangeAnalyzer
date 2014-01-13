@@ -1,4 +1,4 @@
-package edu.ucsc.cs.simulation;
+package edu.ucsc.cs.analysis;
 
 import java.io.File;
 
@@ -10,7 +10,6 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
-import edu.ucsc.cs.analysis.ASTHelperModule;
 import edu.ucsc.cs.utils.FileUtils;
 
 public class JavaParser {
@@ -21,31 +20,30 @@ public class JavaParser {
     	factory = injector.getInstance(ASTHelperFactory.class);		
 	}
  	
-	public JavaStructureNode parse(String source, String fileName) {
+	public JavaStructureNode parse(String source, String fileName, String version) {
 		File file = FileUtils.javaFileFromString(source, fileName);
-		return this.parse(file);
+		return this.parse(file, version);
 	}
     
-    @SuppressWarnings("unchecked")
-	public JavaStructureNode parse(File file) {
-    	ASTHelper<JavaStructureNode> astHelper = factory.create(file);
+	public JavaStructureNode parse(File file, String version) {
+    	ASTHelper<JavaStructureNode> astHelper = getASTHelper(file, version);
 		return astHelper.createStructureTree();
 	}
     
-	public ASTHelper<JavaStructureNode> getASTHelper(String source, String fileName) {
+	public ASTHelper<JavaStructureNode> getASTHelper(String source, String fileName, String version) {
     	File file = FileUtils.javaFileFromString(source, fileName);
-    	return getASTHelper(file);
+    	return getASTHelper(file, version);
     }
     
     @SuppressWarnings("unchecked")
-	public ASTHelper<JavaStructureNode> getASTHelper(File file) {
-    	return factory.create(file);
+	public ASTHelper<JavaStructureNode> getASTHelper(File file, String version) {
+    	return factory.create(file, version);
     }
     
     public static void main(String[] args) {
     	JavaParser parser = new JavaParser();
     	ASTHelper<JavaStructureNode> astHelper = 
-    			parser.getASTHelper(new File("src/edu/ucsc/cs/simulation/JavaParser.java"));
+    			parser.getASTHelper(new File("src/edu/ucsc/cs/analysis/JavaParser.java"), "1.7");
     	JavaStructureNode tree = astHelper.createStructureTree();
     	System.out.println(tree);
     }

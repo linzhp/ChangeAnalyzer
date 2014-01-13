@@ -6,18 +6,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
-
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Move;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Update;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBCollection;
+
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.LogManager;
 
@@ -37,7 +38,7 @@ public class ChangeExtractor extends ChangeProcessor {
 		long start = System.currentTimeMillis();
 		ChangeExtractor reducer = new ChangeExtractor();
 		Repository repo = new Repository(1, reducer);
-		repo.extractChanges(Arrays.asList(64, 34, 687));
+		repo.extractChanges(null);
 		System.out.println("Time spent: " + 
 				(System.currentTimeMillis() - start)/1000 +
 				" seconds");
@@ -64,7 +65,10 @@ public class ChangeExtractor extends ChangeProcessor {
 			if (c instanceof Update) {
 				dbObj.append("newEntity", ((Update) c).getNewEntity().getLabel());
 			} else if (c instanceof Insert || c instanceof Delete) {
-				dbObj.append("parentEntity", c.getParentEntity().getLabel());
+				EntityType parentType = c.getParentEntity().getType();
+				if (parentType != null) {
+					dbObj.append("parentEntity", parentType.toString());
+				}
 			} else if (c instanceof Move) {
 				Move m = (Move)c;
 				dbObj.append("newParentEntity", m.getNewParentEntity().getLabel());

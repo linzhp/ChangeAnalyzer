@@ -1,6 +1,6 @@
 package edu.ucsc.cs.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -9,13 +9,14 @@ import java.util.HashMap;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+import edu.ucsc.cs.analysis.JavaParser;
 import edu.ucsc.cs.simulation.ClassModifier;
 import edu.ucsc.cs.simulation.Indexer;
-import edu.ucsc.cs.simulation.JavaParser;
 
 public class ClassModifierTest {
 	private TypeDeclaration classNode;
@@ -25,7 +26,7 @@ public class ClassModifierTest {
 	@Before
 	public void setUp() {
 		JavaParser parser = new JavaParser();
-		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("fixtures/TextArea.java"));
+		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("fixtures/TextArea.java"), "1.6");
 		JavaStructureNode tree = astHelper.createStructureTree();
 		classNode = (TypeDeclaration)tree.getChildren().get(0).getASTNode();
 		Indexer indexer = new Indexer();

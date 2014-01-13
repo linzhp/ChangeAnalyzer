@@ -1,6 +1,6 @@
 package edu.ucsc.cs.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 
@@ -11,8 +11,8 @@ import org.junit.Test;
 
 import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
 import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+import edu.ucsc.cs.analysis.JavaParser;
 import edu.ucsc.cs.simulation.Indexer;
-import edu.ucsc.cs.simulation.JavaParser;
 import edu.ucsc.cs.simulation.MethodModifier;
 
 public class MethodModifierTest {
@@ -23,7 +23,7 @@ public class MethodModifierTest {
 	@Before
 	public void setUp() throws Exception {
 		JavaParser parser = new JavaParser();
-		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("fixtures/TextArea.java"));
+		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("fixtures/TextArea.java"), "1.6");
 		JavaStructureNode tree = astHelper.createStructureTree();
 		methodNode = ((TypeDeclaration)tree.getChildren().get(0).getASTNode()).methods[2];
 		methodModifier = new MethodModifier(methodNode, new Indexer());

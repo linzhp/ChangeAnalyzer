@@ -16,7 +16,7 @@ public class Repository {
 		this.reducer = reducer;
 	}
 	
-	public void extractChanges(List<Integer> fileIDs) throws Exception  {
+	public void extractChanges(List<Integer> fileIds) throws Exception  {
 		Connection conn = DatabaseManager.getSQLConnection();
 		Statement stmt = conn.createStatement();
 		// commit id is in topological order
@@ -25,7 +25,7 @@ public class Repository {
 						+ repoID + " ORDER BY id ASC");
 		while (commitRS.next()) {
 			int commitID = commitRS.getInt("commit_id");
-			Commit commit = new Commit(commitID, fileIDs, reducer);
+			Commit commit = new Commit(commitID, fileIds, reducer);
 			commit.extractASTDelta();
 		}
 		stmt.close();		

@@ -37,7 +37,7 @@ public class ChangeExtractor extends ChangeProcessor {
 	public static void main(String[] args) throws Exception {
 		long start = System.currentTimeMillis();
 		ChangeExtractor reducer = new ChangeExtractor();
-		Repository repo = new Repository(1, reducer);
+		Repository repo = new Repository(2, reducer);
 		repo.extractChanges(null);
 		System.out.println("Time spent: " + 
 				(System.currentTimeMillis() - start)/1000 +

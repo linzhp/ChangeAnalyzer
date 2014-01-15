@@ -217,11 +217,12 @@ public class RepoFileDistiller {
 								", trying JDK " + sourceLevels[oldLevel]);
 					} else {
 						logger.warning("Failed to parse " + oldSource);
-						return extractChangesFromContent(newSource, ChangeType.ADDITIONAL_CLASS);
+						changes = extractChangesFromContent(newSource, ChangeType.ADDITIONAL_CLASS);
+						break;
 					}
 				}
 			}
-		} 
+		}
 		newFile.delete();
 		oldFile.delete();
 		return changes;

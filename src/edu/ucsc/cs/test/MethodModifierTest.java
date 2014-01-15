@@ -4,14 +4,16 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 
+import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
 import org.junit.Before;
 import org.junit.Test;
 
-import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
-import edu.ucsc.cs.analysis.JavaParser;
+import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 import edu.ucsc.cs.simulation.Indexer;
 import edu.ucsc.cs.simulation.MethodModifier;
 
@@ -22,10 +24,13 @@ public class MethodModifierTest {
 
 	@Before
 	public void setUp() throws Exception {
-		JavaParser parser = new JavaParser();
-		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(new File("fixtures/TextArea.java"), "1.6");
-		JavaStructureNode tree = astHelper.createStructureTree();
-		methodNode = ((TypeDeclaration)tree.getChildren().get(0).getASTNode()).methods[2];
+		String fileName = "fixtures/TextArea.java";
+		CompilationUnitDeclaration tree = JavaCompilationUtils.compile(
+				new File(fileName), 
+				ClassFileConstants.JDK1_7).getCompilationUnit();
+		MethodFinder mFinder = new MethodFinder();
+		tree.traverse(mFinder, tree.scope);
+		methodNode = mFinder.methodNode;
 		methodModifier = new MethodModifier(methodNode, new Indexer());
 	}
 
@@ -35,4 +40,12 @@ public class MethodModifierTest {
 		assertEquals("methodRename1", new String(methodNode.selector));
 	}
 
+	private class MethodFinder extends ASTVisitor {
+		MethodDeclaration methodNode;
+		@Override
+		public boolean visit(MethodDeclaration methodDeclaration, ClassScope scope) {
+			methodNode = methodDeclaration;
+			return false;
+		}
+	}
 }

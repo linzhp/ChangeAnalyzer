@@ -4,22 +4,19 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
+
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
-import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
-import ch.uzh.ifi.seal.changedistiller.ast.CompilationError;
-import ch.uzh.ifi.seal.changedistiller.ast.java.JavaASTNodeTypeConverter;
+import ch.uzh.ifi.seal.changedistiller.ast.InvalidSyntaxException;
+import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
-import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
-import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
-import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
 import edu.ucsc.cs.utils.FileUtils;
 import edu.ucsc.cs.utils.LogManager;
 
@@ -29,6 +26,15 @@ public class RepoFileDistiller {
 	private static HashMap<Integer, FileRevision> fileContentCache = new HashMap<Integer, FileRevision>();
 	private CommitGraph commitGraph;
 	private static final String[] sourceLevels = {"1.7", "1.6", "1.5", "1.4", "1.3", "1.2", "1.1"};
+	private static final long[] versionConstants = {
+		ClassFileConstants.JDK1_7,
+		ClassFileConstants.JDK1_6,
+		ClassFileConstants.JDK1_5,
+		ClassFileConstants.JDK1_4,
+		ClassFileConstants.JDK1_3,
+		ClassFileConstants.JDK1_2,
+		ClassFileConstants.JDK1_1
+	};
 
 	public RepoFileDistiller(ChangeProcessor reducer) {
 		this.reducer = reducer;
@@ -95,14 +101,15 @@ public class RepoFileDistiller {
 	}
 
 	private static List<SourceCodeChange> extractChangesFromContent(FileRevision code, ChangeType changeType) {
-		JavaParser parser = new JavaParser();
-		ASTHelper<JavaStructureNode> astHelper = null;
+		CompilationUnitDeclaration tree = null;
 		int i = 0;
-		while (astHelper == null) {
+		while (tree == null) {
 			try {
-				astHelper = 
-						parser.getASTHelper(code.content, code.toString(), sourceLevels[i]);
-			} catch (CompilationError e) {
+				tree = JavaCompilationUtils.compile(
+						code.content, 
+						code.toString(), 
+						versionConstants[i]).getCompilationUnit();
+			} catch (InvalidSyntaxException e) {
 				if (i < sourceLevels.length - 1) {
 					logger.info("Failed to parse " + code + " with source level " + 
 							sourceLevels[i++] + ", trying with " + sourceLevels[i]);
@@ -112,30 +119,17 @@ public class RepoFileDistiller {
 				}
 			}
 		}
-		JavaStructureNode tree = astHelper.createStructureTree();
-		JavaASTNodeTypeConverter converter = new JavaASTNodeTypeConverter();
-		SourceCodeEntity parentEntity = new SourceCodeEntity(null, 
-				converter.convertNode(tree.getASTNode()), null);
-		List<SourceCodeChange> changes = new LinkedList<>();
-		for (JavaStructureNode node : tree.getChildren()) {
-			if (node.isClassOrInterface()) {
-				SourceCodeEntity thisEntity = new SourceCodeEntity(null, 
-						converter.convertNode(node.getASTNode()), null);
-				if (changeType == ChangeType.ADDITIONAL_CLASS) {
-					changes.add(
-							new Insert(ChangeType.ADDITIONAL_CLASS, null, thisEntity, parentEntity));					
-				} else {
-					changes.add(new Delete(ChangeType.REMOVED_CLASS, null, thisEntity, parentEntity));
-				}
-			} else {
-				logger.severe("Unexpected node: " + node);
-			}
+		SubChangeCollector collector;
+		if (changeType == ChangeType.ADDITIONAL_CLASS) {
+			collector = new InsertCollector(0, Integer.MAX_VALUE);
+		} else {
+			collector = new DeleteCollector(0, Integer.MAX_VALUE);
 		}
-		return changes;
+		tree.traverse(collector, tree.scope);
+		return collector.getChanges();
 	}
 
 	private void processCopy(int fileID, int commitID) throws SQLException, IOException {
-		// TODO many A status are classified by CVSAnalY as C
 		processAdd(fileID, commitID);
 	}
 
@@ -200,8 +194,8 @@ public class RepoFileDistiller {
 		while (changes == null) {
 			try {
 				changes = extractDiff(oldFile, sourceLevels[oldLevel], newFile, sourceLevels[newLevel]);
-			} catch (CompilationError e) {
-				if (e.fileName.startsWith("New ")) {
+			} catch (InvalidSyntaxException e) {
+				if (e.getFileName().startsWith("New ")) {
 					if (newLevel < sourceLevels.length -1) {
 						logger.info("Failed to parse " + newSource +
 								" with source level " + sourceLevels[newLevel++] + 
@@ -210,7 +204,7 @@ public class RepoFileDistiller {
 						logger.warning("Failed to parse " + newSource);
 						return null;
 					}
-				} else if (e.fileName.startsWith("Old ")) {
+				} else if (e.getFileName().startsWith("Old ")) {
 					if (oldLevel < sourceLevels.length -1) {
 						logger.info("Failed to parse " + oldSource +
 								" with JDK " + sourceLevels[oldLevel++] + 

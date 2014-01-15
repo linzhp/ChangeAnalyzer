@@ -8,15 +8,14 @@ import java.util.List;
 
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 
-import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 
-import edu.ucsc.cs.analysis.JavaParser;
 import edu.ucsc.cs.utils.DatabaseManager;
 
 /**
@@ -27,7 +26,6 @@ import edu.ucsc.cs.utils.DatabaseManager;
  *
  */
 public class Simulator {
-	private ASTHelper<JavaStructureNode> astHelper;
 	private HashMap<String, ArrayList<ASTNode>> nodeIndex;
 	private Indexer indexer;
 	private CompilationUnitDeclaration astNode;
@@ -37,10 +35,9 @@ public class Simulator {
 	}
 
 	public Simulator() throws SQLException {
-		JavaParser parser = new JavaParser();
-		astHelper = parser.getASTHelper(new File("TrainingEnd.java"), "1.6");
-		JavaStructureNode tree = astHelper.createStructureTree();
-		astNode = (CompilationUnitDeclaration) tree.getASTNode();
+		String fileName = "TrainingEnd.java";
+		astNode = JavaCompilationUtils.compile(
+				new File(fileName), ClassFileConstants.JDK1_7).getCompilationUnit();
 		indexer = new Indexer();
 		astNode.traverse(indexer, astNode.scope);
 		nodeIndex = indexer.nodeIndex;

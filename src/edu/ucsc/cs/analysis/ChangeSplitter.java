@@ -11,12 +11,12 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-import ch.uzh.ifi.seal.changedistiller.ast.ASTHelper;
-import ch.uzh.ifi.seal.changedistiller.structuredifferencing.java.JavaStructureNode;
+import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -166,10 +166,8 @@ public class ChangeSplitter {
 	}
 	
 	private void printStatics(String content) throws SQLException {
-		JavaParser parser = new JavaParser();
-		ASTHelper<JavaStructureNode> astHelper = parser.getASTHelper(content, "File.java", "1.6");
-		JavaStructureNode tree = astHelper.createStructureTree();
-		CompilationUnitDeclaration astNode = (CompilationUnitDeclaration) tree.getASTNode();
+		CompilationUnitDeclaration astNode = JavaCompilationUtils.compile(
+				content, "File.java", ClassFileConstants.JDK1_7).getCompilationUnit();
 		Indexer indexer = new Indexer();
 		astNode.traverse(indexer, astNode.scope);
 		out.println(String.valueOf(indexer.nodeIndex.get("CLASS").size()) + " classes");

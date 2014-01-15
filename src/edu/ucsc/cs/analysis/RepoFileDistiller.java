@@ -222,6 +222,8 @@ public class RepoFileDistiller {
 				}
 			}
 		} 
+		newFile.delete();
+		oldFile.delete();
 		return changes;
 	}
 	

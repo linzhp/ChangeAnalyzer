@@ -22,7 +22,9 @@ public class JavaParser {
  	
 	public JavaStructureNode parse(String source, String fileName, String version) {
 		File file = FileUtils.javaFileFromString(source, fileName);
-		return this.parse(file, version);
+		JavaStructureNode node = this.parse(file, version);
+		file.delete();
+		return node;
 	}
     
 	public JavaStructureNode parse(File file, String version) {
@@ -32,7 +34,9 @@ public class JavaParser {
     
 	public ASTHelper<JavaStructureNode> getASTHelper(String source, String fileName, String version) {
     	File file = FileUtils.javaFileFromString(source, fileName);
-    	return getASTHelper(file, version);
+    	ASTHelper<JavaStructureNode> astHelper = getASTHelper(file, version);
+    	file.delete();
+		return astHelper;
     }
     
     @SuppressWarnings("unchecked")

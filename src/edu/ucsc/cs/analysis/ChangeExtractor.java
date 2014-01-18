@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -37,8 +38,8 @@ public class ChangeExtractor extends ChangeProcessor {
 	public static void main(String[] args) throws Exception {
 		long start = System.currentTimeMillis();
 		ChangeExtractor reducer = new ChangeExtractor();
-		Repository repo = new Repository(2, reducer);
-		repo.extractChanges(null);
+		Repository repo = new Repository(1, reducer);
+		repo.extractChanges(Arrays.asList(2996));
 		System.out.println("Time spent: " + 
 				(System.currentTimeMillis() - start)/1000 +
 				" seconds");

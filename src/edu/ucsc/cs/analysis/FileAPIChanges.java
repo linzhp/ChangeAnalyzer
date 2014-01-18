@@ -22,7 +22,7 @@ public class FileAPIChanges {
 				" WHERE file_id=" + fileID +
 				" ORDER BY commit_date");
 		while (rs.next()) {
-			distiller.extractASTDelta(fileID, rs.getInt("commit_id"), rs.getString("type").charAt(0));
+			distiller.extractASTDelta(rs);
 		}
 	}
 	/**

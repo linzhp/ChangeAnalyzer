@@ -199,7 +199,7 @@ public class ChangeSplitter {
 						testChangesPerCommit, 
 						testCounter,
 						testChangesPerCategoryEpoch));
-		splitter.splitByCommit(.4, 40, 40);
+		splitter.splitByCommit(.2, 40, 20);
 		
 		DB mongo = DatabaseManager.getMongoDB();
 		

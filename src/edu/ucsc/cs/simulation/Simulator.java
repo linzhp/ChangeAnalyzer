@@ -44,7 +44,7 @@ public class Simulator {
 	}
 
 	public void run(int numCommits) {
-		Sampler sampler = new Sampler(2.152572, 1.703331);
+		Sampler sampler = new Sampler(2.483616, 1.659271);
 		for (int i = 0; i < numCommits; i++) {
 			List<BasicDBObject> changes = sampler.generateCommit();
 			for (BasicDBObject c : changes) {
@@ -95,7 +95,7 @@ public class Simulator {
 		DBCollection collection = mongo.getCollection("simulationResults");
 		for (int i = 0; i < 500; i++) {
 			Simulator simulator = new Simulator();
-			simulator.run(50);
+			simulator.run(20);
 			HashMap<String, ArrayList<ASTNode>> index = simulator.nodeIndex;
 			collection.insert(new BasicDBObject("methods", index.get("METHOD").size())
 			.append("fields", index.get("FIELD").size())

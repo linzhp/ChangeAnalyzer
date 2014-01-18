@@ -47,13 +47,7 @@ public class Commit {
 						logger.warning("File " + fileId + " not found in files table!");
 						continue;
 					}
-					
-					String changeStatus = file.getString("type");
-					if (changeStatus.length() == 1) {
-						// ignore merges
-						char actionType = changeStatus.charAt(0);						
-						distiller.extractASTDelta(fileId, id, actionType);
-					}
+					distiller.extractASTDelta(file);
 				}
 			}
 			stmt1.close();

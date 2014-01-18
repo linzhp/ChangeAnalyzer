@@ -34,12 +34,12 @@ public class MethodModifier extends Modifier{
 		String changeType = object.getString("changeType");
 		switch (changeType) {
 		case "STATEMENT_INSERT":
-			break;
 		case "STATEMENT_ORDERING_CHANGE":
-			break;
 		case "STATEMENT_PARENT_CHANGE":
-			break;
 		case "STATEMENT_DELETE":
+		case "DOC_INSERT":
+		case "DOC_DELETE":
+		case "COMMENT_INSERT":
 			break;
 		case "METHOD_RENAMING":
 			this.rename();

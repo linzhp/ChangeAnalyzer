@@ -12,6 +12,11 @@ public class FieldModifier extends Modifier{
 	@Override
 	public void modify(BasicDBObject object) {
 		String changeType = object.getString("changeType");
-		LogManager.getLogger().warning(changeType + " is not supported");		
+		switch (changeType) {
+		case "DOC_INSERT":
+			break;
+		default: 
+			LogManager.getLogger().warning(changeType + " is not supported");
+		}
 	}
 }

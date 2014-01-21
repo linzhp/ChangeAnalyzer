@@ -11,6 +11,7 @@ import org.eclipse.jdt.internal.compiler.ast.Assignment;
 import org.eclipse.jdt.internal.compiler.ast.BreakStatement;
 import org.eclipse.jdt.internal.compiler.ast.CaseStatement;
 import org.eclipse.jdt.internal.compiler.ast.Clinit;
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.CompoundAssignment;
 import org.eclipse.jdt.internal.compiler.ast.ConstructorDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.ContinueStatement;
@@ -66,17 +67,16 @@ public abstract class SubChangeCollector extends ASTVisitor {
 	}
 	
 	/**
-	 * Optimization to improve the performance. Should not affect the result in any case
+	 * Only visit Class and Compilation Unit
 	 */
 	private boolean shouldVisitChildren(ASTNode node) {
 		if (node instanceof TypeDeclaration) {
 			TypeDeclaration type = (TypeDeclaration)node;
 			return type.declarationSourceEnd >= start && type.declarationSourceStart <= end;
-		} else if (node instanceof MethodDeclaration) {
-			MethodDeclaration method = (MethodDeclaration)node;
-			return method.declarationSourceEnd >= start && method.declarationSourceStart <= end;
+		} else if (node instanceof CompilationUnitDeclaration) {
+			return true;
 		} else {
-			return true;			
+			return false;			
 		}
 	}
 
@@ -92,7 +92,6 @@ public abstract class SubChangeCollector extends ASTVisitor {
 
 	@Override
 	public boolean visit(TypeDeclaration td, BlockScope scope) {
-		// FIXME a class definition can be under any block, not only in method
 		return visit(td);
 	}
 	

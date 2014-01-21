@@ -7,16 +7,13 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
 
-import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-
-import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -24,7 +21,6 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
-import edu.ucsc.cs.simulation.Indexer;
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.FileUtils;
 
@@ -85,8 +81,8 @@ public class ChangeSplitter {
 		}
 		
 		String content = FileUtils.getContent(FILE_ID, cuttingCommit);
-		out.println("Last version in the training set:");
-		printStatics(content);
+		out.println("Last revision (" + cuttingCommit + ") in the training set:");
+		FileUtils.printStatics(content);
 		if (content != null) {
 			FileWriter fw = new FileWriter("TrainingEnd.java");
 			fw.write(content);
@@ -94,22 +90,25 @@ public class ChangeSplitter {
 		}
 		
 		content = FileUtils.getContent(FILE_ID, endCommit);
-		out.println("Last version in the test set:");
-		printStatics(content);
+		out.println("Last revision (" + endCommit + ") in the test set:");
+		FileUtils.printStatics(content);
 	}
 	
 	public void splitByCommit(double splitRatio, int trainingSize, int testSize) throws SQLException, IOException {
 		TreeSet<Integer> commitIdSet = new TreeSet<Integer>();
+		LinkedList<Integer> commitIdList = new LinkedList<>();
 		DBCursor allChanges = changesColl.find(new BasicDBObject("fileId", FILE_ID))
 				.sort(new BasicDBObject("date", 1));
-		while (allChanges.hasNext()) {
-			DBObject c = allChanges.next();
+		for (DBObject c : allChanges) {
 			Integer commitId = (Integer)c.get("commitId");
-			commitIdSet.add(commitId);
+			if (!commitIdSet.contains(commitId)) {
+				commitIdSet.add(commitId);
+				commitIdList.add(commitId);
+			}
 		}
-		Integer[] commitIds = commitIdSet.toArray(new Integer[commitIdSet.size()]);
+		Integer[] commitIds = commitIdList.toArray(new Integer[commitIdSet.size()]);
 		double splittingPosition = commitIds.length * splitRatio;
-		if (splittingPosition < 1 || splittingPosition >= commitIds.length) {
+		if (splittingPosition < 1 || splittingPosition > commitIds.length) {
 			System.err.println("Invalid splitting position");
 			System.exit(1);
 		}
@@ -142,6 +141,7 @@ public class ChangeSplitter {
 				break;
 			}
 			int commitId = commitIds[index];
+			out.println(commitId);
 			DBCursor changes = changesColl.find(new BasicDBObject("fileId", FILE_ID).append("commitId", commitId));
 			while (changes.hasNext()) {
 				DBObject c = changes.next();
@@ -153,7 +153,7 @@ public class ChangeSplitter {
 		
 		String content = FileUtils.getContent(FILE_ID, cuttingCommit);
 		out.println("Last version in the training set:");
-		printStatics(content);
+		FileUtils.printStatics(content);
 		if (content != null) {
 			FileWriter fw = new FileWriter("TrainingEnd.java");
 			fw.write(content);
@@ -162,18 +162,9 @@ public class ChangeSplitter {
 		
 		content = FileUtils.getContent(FILE_ID, endCommit);
 		out.println("Last version in the test set:");
-		printStatics(content);
+		FileUtils.printStatics(content);
 	}
-	
-	private void printStatics(String content) throws SQLException {
-		CompilationUnitDeclaration astNode = JavaCompilationUtils.compile(
-				content, "File.java", ClassFileConstants.JDK1_7).getCompilationUnit();
-		Indexer indexer = new Indexer();
-		astNode.traverse(indexer, astNode.scope);
-		out.println(String.valueOf(indexer.nodeIndex.get("CLASS").size()) + " classes");
-		out.println(String.valueOf(indexer.nodeIndex.get("FIELD").size()) + " fields");
-		out.println(String.valueOf(indexer.nodeIndex.get("METHOD").size()) + " methods");
-	}
+
 
 	/**
 	 * @param args
@@ -199,7 +190,7 @@ public class ChangeSplitter {
 						testChangesPerCommit, 
 						testCounter,
 						testChangesPerCategoryEpoch));
-		splitter.splitByCommit(.2, 40, 20);
+		splitter.splitByCommit(0.2, 40, 20);
 		
 		DB mongo = DatabaseManager.getMongoDB();
 		

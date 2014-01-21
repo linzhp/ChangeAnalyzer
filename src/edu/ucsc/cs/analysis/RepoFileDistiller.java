@@ -232,10 +232,14 @@ public class RepoFileDistiller {
 				+ oldSource.toString());
 
 		List<SourceCodeChange> changes = null;
+		FileDistiller distiller = ChangeDistiller
+				.createFileDistiller(Language.JAVA);
 		while (changes == null) {
 			try {
-				changes = extractDiff(oldFile, sourceLevels[oldLevel], newFile,
-						sourceLevels[newLevel]);
+				distiller.extractClassifiedSourceCodeChanges(oldFile, sourceLevels[oldLevel],
+						newFile, sourceLevels[newLevel]);
+				
+				changes = distiller.getSourceCodeChanges();
 			} catch (InvalidSyntaxException e) {
 				if (e.getFileName().startsWith("New ")) {
 					if (newLevel < sourceLevels.length - 1) {
@@ -296,20 +300,5 @@ public class RepoFileDistiller {
 		}
 		changes.addAll(subChanges);
 		return changes;
-	}
-
-	public static List<SourceCodeChange> extractDiff(File oldFile,
-			String oldSourceLevel, File newFile, String newSourceLevel) {
-		FileDistiller distiller = ChangeDistiller
-				.createFileDistiller(Language.JAVA);
-		distiller.extractClassifiedSourceCodeChanges(oldFile, oldSourceLevel,
-				newFile, newSourceLevel);
-
-		List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
-		if (changes == null) {
-			logger.info("No AST difference found");
-		}
-		return changes;
-
 	}
 }

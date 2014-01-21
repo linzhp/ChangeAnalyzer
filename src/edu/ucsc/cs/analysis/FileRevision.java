@@ -1,12 +1,12 @@
 package edu.ucsc.cs.analysis;
 
-class FileRevision {
+public class FileRevision {
 	int commitId;
 	int fileId;
 	String content;
 	String sourceLevel;
 	
-	FileRevision(int commitId, int fileId, String content) {
+	public FileRevision(int commitId, int fileId, String content) {
 		this.commitId = commitId;
 		this.content = content;
 		this.fileId = fileId;

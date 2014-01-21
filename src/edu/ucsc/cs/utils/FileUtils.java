@@ -1,11 +1,21 @@
 package edu.ucsc.cs.utils;
 
-import java.io.*;
+import static java.lang.System.out;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.logging.Logger;
+
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
+
+import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
+import edu.ucsc.cs.simulation.Indexer;
 
 public class FileUtils {
 	public static File javaFileFromString(String content, String fileName) {
@@ -41,5 +51,16 @@ public class FileUtils {
 		}
 		stmt.close();
 		return result;
+	}
+	
+	
+	public static void printStatics(String content) throws SQLException {
+		CompilationUnitDeclaration astNode = JavaCompilationUtils.compile(
+				content, "File.java", ClassFileConstants.JDK1_7).getCompilationUnit();
+		Indexer indexer = new Indexer();
+		astNode.traverse(indexer, astNode.scope);
+		out.println(String.valueOf(indexer.nodeIndex.get("CLASS").size()) + " classes");
+		out.println(String.valueOf(indexer.nodeIndex.get("FIELD").size()) + " fields");
+		out.println(String.valueOf(indexer.nodeIndex.get("METHOD").size()) + " methods");
 	}
 }

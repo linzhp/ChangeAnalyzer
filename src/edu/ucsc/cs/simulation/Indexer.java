@@ -45,8 +45,8 @@ public class Indexer extends ASTVisitor {
 
 	@Override
 	public boolean visit(TypeDeclaration localTypeDeclaration, BlockScope scope) {
-		index(localTypeDeclaration);
-		return true;
+		// Ignore local classes
+		return false;
 	}
 
 	@Override

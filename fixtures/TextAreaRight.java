@@ -26,8 +26,6 @@ package org.gjt.sp.jedit.textarea;
 //{{{ Imports
 import java.io.IOException;
 import java.util.EventObject;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.gjt.sp.jedit.Debug;
 import org.gjt.sp.jedit.Mode;
 import org.gjt.sp.jedit.TextUtilities;
@@ -36,9 +34,14 @@ import org.gjt.sp.jedit.input.AbstractInputHandler;
 import org.gjt.sp.jedit.input.DefaultInputHandlerProvider;
 import org.gjt.sp.jedit.input.InputHandlerProvider;
 import org.gjt.sp.jedit.input.TextAreaInputHandler;
-import org.gjt.sp.jedit.syntax.*;
+import org.gjt.sp.jedit.syntax.Chunk;
+import org.gjt.sp.jedit.syntax.TokenMarker;
+import org.gjt.sp.jedit.syntax.ParserRuleSet;
+import org.gjt.sp.jedit.syntax.ModeProvider;
+import org.gjt.sp.jedit.syntax.SyntaxStyle;
 import org.gjt.sp.util.Log;
 import org.gjt.sp.util.StandardUtilities;
+import org.gjt.sp.util.SyntaxUtilities;
 
 import javax.swing.*;
 import javax.swing.event.CaretEvent;
@@ -59,8 +62,8 @@ import org.gjt.sp.jedit.IPropertyManager;
 import org.gjt.sp.jedit.JEditActionContext;
 import org.gjt.sp.jedit.JEditActionSet;
 import org.gjt.sp.jedit.JEditBeanShellAction;
-//}}}
 import org.gjt.sp.util.IOUtilities;
+//}}}
 
 /**
  * jEdit's text component.<p>
@@ -109,15 +112,92 @@ public class TextArea extends JComponent
 			return;
 		}
 		
-		Font font1 = new Font("Monospaced", Font.PLAIN, 12);
+		
+		//{{{ init Style property manager
+		if (SyntaxUtilities.propertyManager == null)
+		{
+			final Properties props = new Properties();
+			InputStream in = TextArea.class.getResourceAsStream("/org/gjt/sp/jedit/jedit.props");
+			try
+			{
+				props.load(in);
+			}
+			catch (IOException e)
+			{
+				Log.log(Log.ERROR, TextArea.class, e);
+			}		
+			finally
+			{
+				IOUtilities.closeQuietly(in);
+			}
+			SyntaxUtilities.propertyManager = new IPropertyManager()
+			{
+				public String getProperty(String name)
+				{
+					return (String) props.get(name);
+				}
+			};
+		}
+		//}}}
+
+		String defaultFont = SyntaxUtilities.propertyManager.getProperty("view.font");
+		int defaultFontSize;
+		try
+		{
+			defaultFontSize = Integer.parseInt(SyntaxUtilities.propertyManager.getProperty("view.fontsize"));
+		}
+		catch (NumberFormatException e)
+		{
+			defaultFontSize = 12;
+		}
+		
+		painter.setStyles(SyntaxUtilities.loadStyles(defaultFont,defaultFontSize));
+		
+		/*Font font1 = new Font("Monospaced", Font.PLAIN, 12);
 		painter.setFont(font1);
 		SyntaxStyle[] styles = new SyntaxStyle[1];
-		styles[0] = new SyntaxStyle(Color.black, Color.white, font1);
-		painter.setStyles(styles);
+		styles[0] = new SyntaxStyle(Color.black, Color.white, font1);*/
+		//painter.setStyles(styles);
+		
+		
 		painter.setBlockCaretEnabled(false);
 
+		String name = SyntaxUtilities.propertyManager.getProperty("view.font");
+		String family = SyntaxUtilities.propertyManager.getProperty(name);
+		String sizeString = SyntaxUtilities.propertyManager.getProperty(name + "size");
+		String styleString = SyntaxUtilities.propertyManager.getProperty(name + "style");
 
+		//{{{ get font, copy of jEdit.getFontPropert()
+		Font font = null;
+		if(family == null || sizeString == null || styleString == null)
+			font = new Font("Monospaced", Font.PLAIN, 12);
+		else
+		{
+			int size, style;
 
+			try
+			{
+				size = Integer.parseInt(sizeString);
+			}
+			catch(NumberFormatException nf)
+			{
+				size = 12;
+			}
+
+			try
+			{
+				style = Integer.parseInt(styleString);
+			}
+			catch(NumberFormatException nf)
+			{
+				style = Font.PLAIN;
+			}
+			font = new Font(family,style,size);
+			
+		} //}}}
+
+		
+		painter.setFont(font);
 		painter.setStructureHighlightEnabled(true);
 		painter.setStructureHighlightColor(Color.black);
 		painter.setEOLMarkersPainted(false);
@@ -152,8 +232,13 @@ public class TextArea extends JComponent
 
 		setCaretBlinkEnabled(true);
 		setElectricScroll(3);
-
-		FoldHandler.foldHandlerProvider = new DefaultFoldHandlerProvider();
+		
+		DefaultFoldHandlerProvider foldHandlerProvider = new DefaultFoldHandlerProvider(); 
+		
+		FoldHandler.foldHandlerProvider = foldHandlerProvider;
+		foldHandlerProvider.addFoldHandler(new ExplicitFoldHandler());
+		foldHandlerProvider.addFoldHandler(new IndentFoldHandler());
+		foldHandlerProvider.addFoldHandler(new DummyFoldHandler());
 		JEditBuffer buffer = new JEditBuffer();
 		TokenMarker tokenMarker = new TokenMarker();
 		tokenMarker.addRuleSet(new ParserRuleSet("text","MAIN"));
@@ -169,6 +254,7 @@ public class TextArea extends JComponent
 	//{{{ TextArea constructor
 	/**
 	 * Creates a new JEditTextArea.
+	 * @param inputHandlerProvider the inputHandlerProvider
 	 */
 	public TextArea(InputHandlerProvider inputHandlerProvider)
 	{
@@ -249,6 +335,7 @@ public class TextArea extends JComponent
 	} //}}}
 
 	//{{{ setTransferHandler() method
+	@Override
 	public void setTransferHandler(TransferHandler newHandler)
 	{
 		super.setTransferHandler(newHandler);
@@ -264,7 +351,9 @@ public class TextArea extends JComponent
 	} //}}}
 
 	//{{{ toString() method
-	public String toString() {
+	@Override
+	public String toString() 
+	{
 		StringBuilder builder = new StringBuilder();
 		builder.append("caret: ").append(caret).append('\n');
 		builder.append("caretLine: ").append(caretLine).append('\n');
@@ -2191,11 +2280,10 @@ forward_scan:	do
 	 */
 	public void centerCaret()
 	{
-		int offset = getScreenLineStartOffset(visibleLines >> 1);
-		if(offset == -1)
-			getToolkit().beep();
-		else
-			setCaretPosition(offset);
+		int physicalLine = getCaretLine();
+		int midPhysicalLine = getPhysicalLineOfScreenLine(visibleLines >> 1);
+		int diff = physicalLine -  midPhysicalLine; 
+		setFirstLine(getFirstLine() + diff);
 	} //}}}
 
 	//{{{ setCaretPosition() method
@@ -3840,6 +3928,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	/**
 	 * Like {@link DisplayManager#expandFold(int,boolean)}, but
 	 * also moves the caret to the first sub-fold.
+	 * @param fully If true, all subfolds will also be expanded
 	 * @since jEdit 4.0pre3
 	 */
 	public void expandFold(boolean fully)
@@ -3923,6 +4012,8 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	//{{{ addExplicitFold() method
 	/**
 	 * Surrounds the selection with explicit fold markers.
+	 * @throws TextAreaException an exception thrown if the folding mode is 
+	 * not explicit
 	 * @since jEdit 4.0pre3
 	 */
 	public void addExplicitFold() throws TextAreaException
@@ -4572,6 +4663,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	 * Called by the AWT when this component is added to a parent.
 	 * Adds document listener.
 	 */
+	@Override
 	public void addNotify()
 	{
 		super.addNotify();
@@ -4597,6 +4689,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	 * This clears the pointer to the currently focused component.
 	 * Also removes document listener.
 	 */
+	@Override
 	public void removeNotify()
 	{
 		super.removeNotify();
@@ -4613,6 +4706,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	 * Java 1.4 compatibility fix to make Tab key work.
 	 * @since jEdit 3.2pre4
 	 */
+	@Override
 	public boolean getFocusTraversalKeysEnabled()
 	{
 		return false;
@@ -4630,6 +4724,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	} //}}}
 
 	//{{{ processKeyEvent() method
+	@Override
 	public void processKeyEvent(KeyEvent evt)
 	{
 		getInputHandler().processKeyEvent(evt, 1 /* source=TEXTAREA (1) */, false);
@@ -4662,6 +4757,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 
 	//{{{ Input method support
 	private InputMethodSupport inputMethodSupport;
+	@Override
 	public InputMethodRequests getInputMethodRequests()
 	{
 		if(inputMethodSupport == null)
@@ -4753,107 +4849,11 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		actionContext.addActionSet(actionSet);
 	} //}}}
 
-	//{{{ Deprecated methods
-
-	//{{{ getSelectionStart() method
-	/**
-	 * @deprecated Instead, obtain a Selection instance using
-	 * any means, and call its <code>getStart()</code> method
-	 */
-	public final int getSelectionStart()
-	{
-		if(getSelectionCount() != 1)
-			return caret;
-
-		return getSelection(0).getStart();
-	} //}}}
-
-	//{{{ getSelectionStart() method
-	/**
-	 * @deprecated Instead, obtain a Selection instance using
-	 * any means, and call its <code>getStart(int)</code> method
-	 */
-	public int getSelectionStart(int line)
-	{
-		if(getSelectionCount() != 1)
-			return caret;
-
-		return getSelection(0).getStart(buffer,line);
-	} //}}}
-
-	//{{{ getSelectionStartLine() method
-	/**
-	 * @deprecated Instead, obtain a Selection instance using
-	 * any means, and call its <code>getStartLine()</code> method
-	 */
-	public final int getSelectionStartLine()
-	{
-		if(getSelectionCount() != 1)
-			return caret;
-
-		return getSelection(0).getStartLine();
-	} //}}}
-
-	//{{{ setSelectionStart() method
-	/**
-	 * @deprecated Do not use.
-	 */
-	public final void setSelectionStart(int selectionStart)
-	{
-		int selectionEnd = getSelectionCount() == 1 ? getSelection(0).getEnd() : caret;
-		select(selectionStart,selectionEnd,true);
-	} //}}}
-
-	//{{{ getSelectionEnd() method
-	/**
-	 * @deprecated Instead, obtain a Selection instance using
-	 * any means, and call its <code>getEnd()</code> method
-	 */
-	public final int getSelectionEnd()
-	{
-		return getSelectionCount() == 1 ? getSelection(0).getEnd() : caret;
-
-	} //}}}
-
-	//{{{ getSelectionEnd() method
-	/**
-	 * @deprecated Instead, obtain a Selection instance using
-	 * any means, and call its <code>getEnd(int)</code> method
-	 */
-	public int getSelectionEnd(int line)
-	{
-		if(getSelectionCount() != 1)
-			return caret;
-
-		return getSelection(0).getEnd(buffer,line);
-	} //}}}
-
-	//{{{ getSelectionEndLine() method
-	/**
-	 * @deprecated Instead, obtain a Selection instance using
-	 * any means, and call its <code>getEndLine()</code> method
-	 */
-	public final int getSelectionEndLine()
-	{
-		if(getSelectionCount() != 1)
-			return caret;
-
-		return getSelection(0).getEndLine();
-	} //}}}
-
-	//{{{ setSelectionEnd() method
-	/**
-	 * @deprecated Do not use.
-	 */
-	public final void setSelectionEnd(int selectionEnd)
-	{
-		select(getSelectionStart(),selectionEnd,true);
-	} //}}}
-
 	//{{{ getMarkPosition() method
 	/**
 	 * @deprecated Do not use.
 	 */
+	@Deprecated
 	public final int getMarkPosition()
 	{
 		Selection s = getSelectionAtOffset(caret);
@@ -4867,11 +4867,12 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		else
 			return caret;
 	} //}}}
-
+	
 	//{{{ getMarkLine() method
 	/**
 	 * @deprecated Do not use.
 	 */
+	@Deprecated
 	public final int getMarkLine()
 	{
 		if(getSelectionCount() != 1)
@@ -4885,55 +4886,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		else
 			return caretLine;
 	} //}}}
-
-	//{{{ select() method
-	/**
-	 * @deprecated Instead, call either <code>addToSelection()</code>,
-	 * or <code>setSelection()</code> with a new Selection instance.
-	 */
-	public void select(int start, int end)
-	{
-		select(start,end,true);
-	} //}}}
-
-	//{{{ select() method
-	/**
-	 * @deprecated Instead, call either <code>addToSelection()</code>,
-	 * or <code>setSelection()</code> with a new Selection instance.
-	 */
-	public void select(int start, int end, boolean doElectricScroll)
-	{
-		selectNone();
-
-		int newStart, newEnd;
-		if(start < end)
-		{
-			newStart = start;
-			newEnd = end;
-		}
-		else
-		{
-			newStart = end;
-			newEnd = start;
-		}
-
-		setSelection(new Selection.Range(newStart,newEnd));
-		moveCaretPosition(end,doElectricScroll);
-	} //}}}
-
-	//{{{ isSelectionRectangular() method
-	/**
-	 * @deprecated Instead, check if the appropriate Selection
-	 * is an instance of the Selection.Rect class.
-	 */
-	public boolean isSelectionRectangular()
-	{
-		Selection s = getSelectionAtOffset(caret);
-		return s != null && s instanceof Selection.Rect;
-	} //}}}
-
-	//}}}
-
+	
 	//{{{ Package-private members
 
 	static TextArea focusedComponent;
@@ -5421,7 +5374,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		moveCaretPosition(newCaret);
 	}//}}}
 
-
+	//{{{ lineContainsSpaceAndTabs() method
 	/**
 	 * Check if the line contains only spaces and tabs.
 	 *
@@ -5444,7 +5397,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 			}
 		}
 		return true;
-	}
+	} //}}}
 
 	//{{{ insert() method
 	protected void insert(String str, boolean indent)
@@ -6239,9 +6192,9 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		actionSet.load();
 		actionSet.initKeyBindings();
 		return textArea;
-	}
+	} //}}}
 	
-	// {{{ createTextArea() method
+	//{{{ createTextArea() method
 	/**
 	 * Create a standalone TextArea.
 	 * If you want to use it in jEdit, please use {@link org.gjt.sp.jedit.jEdit#createTextArea()}
@@ -6256,7 +6209,7 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		return textArea;
 	} // }}}
 	
-	// {{{ createTextArea() method
+	//{{{ createTextArea() method
 	/**
 	 * Create a standalone TextArea.
 	 * If you want to use it in jEdit, please use {@link org.gjt.sp.jedit.jEdit#createTextArea()}
@@ -6280,9 +6233,10 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 		{
 			IOUtilities.closeQuietly(in);
 		}
-		final TextArea textArea = _createTextArea(false, new IPropertyManager() {
-
-			public String getProperty(String name) {
+		TextArea textArea = _createTextArea(false, new IPropertyManager() 
+		{
+			public String getProperty(String name) 
+			{
 				return (String) props.get(name);
 			}
 		});
@@ -6295,7 +6249,12 @@ loop:		for(int i = lineNo - 1; i >= 0; i--)
 	{
 		JFrame frame = new JFrame();
 		TextArea text = createTextArea();
+		Mode mode = new Mode("xml");
+		mode.setProperty("file","modes/xml.xml");
+		ModeProvider.instance.addMode(mode);
+		text.getBuffer().setMode(mode);
 		frame.getContentPane().add(text);
+		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		frame.pack();
 		frame.setVisible(true);
 	} //}}}

@@ -11,7 +11,6 @@ import org.eclipse.jdt.internal.compiler.ast.Assignment;
 import org.eclipse.jdt.internal.compiler.ast.BreakStatement;
 import org.eclipse.jdt.internal.compiler.ast.CaseStatement;
 import org.eclipse.jdt.internal.compiler.ast.Clinit;
-import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.CompoundAssignment;
 import org.eclipse.jdt.internal.compiler.ast.ConstructorDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.ContinueStatement;
@@ -78,8 +77,6 @@ public abstract class SubChangeCollector extends ASTVisitor {
 			MethodDeclaration method = (MethodDeclaration) node;
 			return method.declarationSourceEnd >= start
 					&& method.declarationSourceStart <= end;
-		} else if (node instanceof CompilationUnitDeclaration) {
-			return true;
 		} else {
 			return false;
 		}

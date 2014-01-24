@@ -3,9 +3,9 @@ package edu.ucsc.cs.analysis;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -146,23 +146,35 @@ public class RepoFileDistiller {
 	private void processCopy(int fileId, int commitId, int actionId) throws SQLException,
 			IOException {
 		Connection conn = DatabaseManager.getSQLConnection();
-		Statement stmt = conn.createStatement();
-		ResultSet copy = stmt.executeQuery("SELECT * FROM file_copies WHERE action_id=" + actionId);
+		PreparedStatement fileCopiesStmt = conn.prepareStatement(
+				"SELECT * FROM file_copies WHERE action_id= ?");
+		fileCopiesStmt.setInt(1, actionId);
+		ResultSet copy = fileCopiesStmt.executeQuery();
 		if (copy.next()) {
 			int sourceFileId = copy.getInt("from_id");
-			int sourceCommitId = copy.getInt("from_commit_id");
-			String sourceContent = FileUtils.getContent(
-					sourceFileId, sourceCommitId);
-			String targetContent = FileUtils.getContent(fileId, commitId);
-			List<SourceCodeChange> changes = extractDiff(new FileRevision(
-					sourceCommitId, sourceFileId, sourceContent), new FileRevision(
-					commitId, fileId, targetContent));
-			if (changes != null) {
-				reducer.add(changes, fileId, commitId);
-				fileContentCache.put(fileId, new FileRevision(commitId, fileId,
-						targetContent));
+			
+			PreparedStatement fileInfoStmt = conn.prepareStatement(
+					"SELECT * FROM files WHERE id = " + sourceFileId);
+			ResultSet fileInfo = fileInfoStmt.executeQuery();
+			fileInfo.next();
+			if (fileInfo.getString("file_name").endsWith(".java")) {
+				int sourceCommitId = copy.getInt("from_commit_id");
+				String sourceContent = FileUtils.getContent(
+						sourceFileId, sourceCommitId);
+				String targetContent = FileUtils.getContent(fileId, commitId);
+				List<SourceCodeChange> changes = extractDiff(new FileRevision(
+						sourceCommitId, sourceFileId, sourceContent), new FileRevision(
+						commitId, fileId, targetContent));
+				if (changes != null) {
+					reducer.add(changes, fileId, commitId);
+					fileContentCache.put(fileId, new FileRevision(commitId, fileId,
+							targetContent));
+				}				
 			}
+			fileInfoStmt.close();
+			
 		}
+		fileCopiesStmt.close();
 	}
 
 	/**

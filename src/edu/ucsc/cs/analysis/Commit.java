@@ -2,6 +2,7 @@ package edu.ucsc.cs.analysis;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -9,49 +10,77 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.LogManager;
 
 public class Commit {
 	private int id;
 	private Logger logger;
-	private Connection conn;
+	private Connection sqlConn;
 	private List<Integer> includedFileIds;
 	private RepoFileDistiller distiller;
+	private DB mongoConn;
 	
 	public Commit(int commitID, List<Integer> fildIds, ChangeProcessor processor) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
 		this.includedFileIds = fildIds;
 		distiller = new RepoFileDistiller(processor);
-		conn = DatabaseManager.getSQLConnection();
+		sqlConn = DatabaseManager.getSQLConnection();
+		mongoConn = DatabaseManager.getMongoDB();
 	}
 
 	public void extractASTDelta() throws Exception {
 		try {
-			Statement stmt1 = conn.createStatement();
-			Statement stmt2 = conn.createStatement();
-			ResultSet file = stmt1.executeQuery("select * from actions "
+			Statement stmt1 = sqlConn.createStatement();
+			PreparedStatement fileTypeStmt = sqlConn.prepareStatement("SELECT * FROM file_types WHERE file_id = ?");
+			PreparedStatement fileNameStmt = sqlConn.prepareStatement("SELECT * FROM files WHERE id = ?");
+			ResultSet fileAction = stmt1.executeQuery("select * from actions "
 					+ "where commit_id=" + id);
-			while (file.next()) {
-				int fileId = file.getInt("file_id");
-				if (includedFileIds == null || includedFileIds.contains(fileId)) {
-					ResultSet fileInfo = stmt2.executeQuery("SELECT * from files "
-							+ "where id = " + fileId);
-					if (fileInfo.next()) {
-						String fileName = fileInfo.getString("file_name");
-						if (!fileName.endsWith(".java")) {
-							continue;
-						}
-					} else {
-						logger.warning("File " + fileId + " not found in files table!");
-						continue;
-					}
-					distiller.extractASTDelta(file);
+			DBCollection extractedChanges = mongoConn.getCollection("changes");
+			while (fileAction.next()) {
+				int fileId = fileAction.getInt("file_id");
+				if (includedFileIds != null && !includedFileIds.contains(fileId)) {
+					continue;
 				}
+				DBCursor cursor = extractedChanges.find(
+						new BasicDBObject("commitId", id).append("fileId", fileId));
+				if (cursor.hasNext()) {
+					// changes for the action extracted
+					continue;
+				}
+				fileTypeStmt.setInt(1, fileId);
+				ResultSet fileType = fileTypeStmt.executeQuery();
+				if (!fileType.next()) {
+					logger.warning("Cannot find file type for file " + fileId);
+					continue;
+				}
+				String type = fileType.getString("type");
+				if (!type.equals("code")) {
+					continue;
+				}
+				
+				fileNameStmt.setInt(1, fileId);
+				ResultSet fileInfo = fileNameStmt.executeQuery();
+				
+				if (!fileInfo.next()) {
+					logger.warning("File " + fileId + " not found in files table!");
+					continue;
+				} 
+				String fileName = fileInfo.getString("file_name");
+				if (!fileName.endsWith(".java")) {
+					continue;
+				}
+				distiller.extractASTDelta(fileAction);
 			}
 			stmt1.close();
-			stmt2.close();
+			fileTypeStmt.close();
+			fileNameStmt.close();
 		} catch (IOException | SQLException e) {
 			logger.log(Level.WARNING, "Error in distilling commit " + id, e);
 			throw e;

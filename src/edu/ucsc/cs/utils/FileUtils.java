@@ -44,7 +44,7 @@ public class FileUtils {
 		String result;
 		if (!rs.next()) {
 			result = null;
-			logger.warning("Content for file " + fileId + " at commit_id "
+			logger.severe("Content for file " + fileId + " at commit_id "
 					+ commitId + " not found");
 		} else {
 			result = rs.getString("content");

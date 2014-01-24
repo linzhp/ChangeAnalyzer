@@ -8,9 +8,11 @@ import org.eclipse.jdt.internal.compiler.ast.Statement;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
+import edu.ucsc.cs.utils.LogManager;
 
 public class InsertCollector extends SubChangeCollector {
 	
@@ -33,8 +35,12 @@ public class InsertCollector extends SubChangeCollector {
 		} else if (node instanceof Javadoc) {
 			cType = ChangeType.DOC_INSERT;
 		}
+		EntityType eType = converter.convertNode(node);
+		if (eType == null) {
+			LogManager.getLogger().severe("Cannot convert " + node);
+		}
 		SourceCodeEntity thisEntity = new SourceCodeEntity(null, 
-				converter.convertNode(node), null);
+				eType, null);
 		return new Insert(cType, null, thisEntity, parentEntity);
 	}
 

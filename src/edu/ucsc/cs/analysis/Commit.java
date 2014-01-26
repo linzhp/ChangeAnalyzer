@@ -25,12 +25,14 @@ public class Commit {
 	private List<Integer> includedFileIds;
 	private RepoFileDistiller distiller;
 	private DB mongoConn;
+	private CommitGraph commitGraph;
 	
-	public Commit(int commitID, List<Integer> fildIds, ChangeProcessor processor) {
+	public Commit(int commitID, List<Integer> fildIds, ChangeProcessor processor, CommitGraph commitGraph) {
 		this.id = commitID;
 		logger = LogManager.getLogger();
 		this.includedFileIds = fildIds;
-		distiller = new RepoFileDistiller(processor);
+		this.commitGraph = commitGraph;
+		distiller = new RepoFileDistiller(processor, commitGraph);
 		sqlConn = DatabaseManager.getSQLConnection();
 		mongoConn = DatabaseManager.getMongoDB();
 	}
@@ -46,12 +48,6 @@ public class Commit {
 			while (fileAction.next()) {
 				int fileId = fileAction.getInt("file_id");
 				if (includedFileIds != null && !includedFileIds.contains(fileId)) {
-					continue;
-				}
-				DBCursor cursor = extractedChanges.find(
-						new BasicDBObject("commitId", id).append("fileId", fileId));
-				if (cursor.hasNext()) {
-					// changes for the action extracted
 					continue;
 				}
 				fileTypeStmt.setInt(1, fileId);
@@ -76,7 +72,13 @@ public class Commit {
 				if (!fileName.endsWith(".java")) {
 					continue;
 				}
-				distiller.extractASTDelta(fileAction);
+
+				DBCursor cursor = extractedChanges.find(
+						new BasicDBObject("commitId", id).append("fileId", fileId));
+				if (!cursor.hasNext()) {
+					distiller.extractASTDelta(fileAction);
+				}
+				commitGraph.addCommit(fileId, id);
 			}
 			stmt1.close();
 			fileTypeStmt.close();

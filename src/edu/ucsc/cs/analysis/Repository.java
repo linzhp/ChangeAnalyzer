@@ -10,6 +10,7 @@ import edu.ucsc.cs.utils.DatabaseManager;
 public class Repository {
 	private int repoID;
 	private ChangeProcessor reducer;
+	private CommitGraph commitGraph = new CommitGraph();
 	
 	public Repository(int repoID, ChangeProcessor reducer){
 		this.repoID = repoID;
@@ -25,7 +26,7 @@ public class Repository {
 						+ repoID + " ORDER BY id ASC");
 		while (commitRS.next()) {
 			int commitID = commitRS.getInt("commit_id");
-			Commit commit = new Commit(commitID, fileIds, reducer);
+			Commit commit = new Commit(commitID, fileIds, reducer, commitGraph);
 			commit.extractASTDelta();
 		}
 		stmt.close();		

@@ -4,20 +4,24 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
-import java.util.logging.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.TreeSet;
+import java.util.logging.Logger;
 
 import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.LogManager;
 
 public class CommitGraph {
-	private static HashMap<Integer, TreeSet<Integer>> previousCommits = new HashMap<Integer, TreeSet<Integer>>();
+	private HashMap<Integer, TreeSet<Integer>> previousCommits;
 	private Connection conn;
 	private Logger logger;
 
 	public CommitGraph() {
 		conn = DatabaseManager.getSQLConnection();
 		logger = LogManager.getLogger();
+		previousCommits = new HashMap<Integer, TreeSet<Integer>>();
 	}
 
 	/**

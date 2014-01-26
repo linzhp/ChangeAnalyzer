@@ -40,9 +40,9 @@ public class RepoFileDistiller {
 			ClassFileConstants.JDK1_4, ClassFileConstants.JDK1_3,
 			ClassFileConstants.JDK1_2, ClassFileConstants.JDK1_1 };
 
-	public RepoFileDistiller(ChangeProcessor reducer) {
+	public RepoFileDistiller(ChangeProcessor reducer, CommitGraph commitGraph) {
 		this.reducer = reducer;
-		commitGraph = new CommitGraph();
+		this.commitGraph = commitGraph;
 	}
 
 	public void extractASTDelta(ResultSet action)
@@ -72,7 +72,6 @@ public class RepoFileDistiller {
 			processRename(fileId, commitId);
 			break;
 		}
-		commitGraph.addCommit(fileId, commitId);
 	}
 
 	private void processDelete(int fileId, int commitId) throws IOException,

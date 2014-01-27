@@ -80,7 +80,7 @@ public class RepoFileDistiller {
 				commitId);
 		String content = getPreviousContent(fileId, previousCommitId);
 		if (content == null) {
-			logger.warning("Previous content for file " + fileId
+			logger.severe("Previous content for file " + fileId
 					+ " at commit " + commitId
 					+ " not found. Previous commit is " + previousCommitId);
 		} else {

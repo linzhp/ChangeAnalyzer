@@ -45,7 +45,7 @@ public class RepoFileDistiller {
 		this.commitGraph = commitGraph;
 	}
 
-	public void extractASTDelta(ResultSet action)
+	public void process(ResultSet action)
 			throws SQLException, IOException {
 		String actionType = action.getString("type");
 		int fileId = action.getInt("file_id");
@@ -55,27 +55,29 @@ public class RepoFileDistiller {
 		switch (actionType) {
 		case "C":
 			// the file is created by copying from another file
-			processCopy(fileId, commitId, action.getInt("id"));
+			processCopy(action);
 			break;
 		case "M":
-			processModify(fileId, commitId);
+			processModify(action);
 			break;
 		case "D":
 			// a file is deleted
-			processDelete(fileId, commitId);
+			processDelete(action);
 			break;
 		case "A":
 			// a file is added
-			processAdd(fileId, commitId);
+			processAdd(action);
 			break;
 		case "V":
-			processRename(fileId, commitId);
+			processRename(action);
 			break;
 		}
 	}
 
-	private void processDelete(int fileId, int commitId) throws IOException,
+	private void processDelete(ResultSet action) throws IOException,
 			SQLException {
+		int fileId = action.getInt("file_id");
+		int commitId = action.getInt("commit_id");
 		int previousCommitId = commitGraph.findPreviousCommitId(fileId,
 				commitId);
 		String content = getPreviousContent(fileId, previousCommitId);
@@ -94,8 +96,10 @@ public class RepoFileDistiller {
 		}
 	}
 
-	private void processAdd(int fileId, int commitId) throws SQLException,
+	private void processAdd(ResultSet action) throws SQLException,
 			IOException {
+		int fileId = action.getInt("file_id");
+		int commitId = action.getInt("commit_id");
 		String newContent = FileUtils.getContent(fileId, commitId);
 		if (newContent == null)
 			logger.warning("Content for file " + fileId + " at commit_id "
@@ -142,12 +146,14 @@ public class RepoFileDistiller {
 		return collector.getChanges();
 	}
 
-	private void processCopy(int fileId, int commitId, int actionId) throws SQLException,
+	private void processCopy(ResultSet action) throws SQLException,
 			IOException {
+		int fileId = action.getInt("file_id");
+		int commitId = action.getInt("commit_id");
 		Connection conn = DatabaseManager.getSQLConnection();
 		PreparedStatement fileCopiesStmt = conn.prepareStatement(
 				"SELECT * FROM file_copies WHERE action_id= ?");
-		fileCopiesStmt.setInt(1, actionId);
+		fileCopiesStmt.setInt(1, action.getInt("id"));
 		ResultSet copy = fileCopiesStmt.executeQuery();
 		if (copy.next()) {
 			int sourceFileId = copy.getInt("from_id");
@@ -185,8 +191,10 @@ public class RepoFileDistiller {
 	 * @throws SQLException
 	 * @throws IOException
 	 */
-	private void processModify(int fileId, int commitId) throws SQLException,
+	private void processModify(ResultSet action) throws SQLException,
 			IOException {
+		int fileId = action.getInt("file_id");
+		int commitId = action.getInt("commit_id");
 		int previousCommitId = commitGraph.findPreviousCommitId(fileId,
 				commitId);
 		String newContent = FileUtils.getContent(fileId, commitId);
@@ -221,17 +229,20 @@ public class RepoFileDistiller {
 		return oldContent;
 	}
 
-	private void processRename(int fileID, int commitID) throws SQLException,
+	private void processRename(ResultSet action) throws SQLException,
 			IOException {
-		processModify(fileID, commitID);
+		processModify(action);
 	}
 
-	public static List<SourceCodeChange> extractDiff(FileRevision oldSource,
+	public static List<FineChange> extractDiff(FileRevision oldSource,
 			FileRevision newSource) throws IOException {
 		if (oldSource.content == null && newSource.content != null) {
 			return extractChangesFromContent(newSource,
 					ChangeType.ADDITIONAL_CLASS);
 		}
+		/*
+		 * Don't treat old content != null and new content == null to be
+		 */
 		if (newSource.content == null)
 			return null;
 		assert (oldSource.content != null && newSource.content != null);
@@ -288,28 +299,23 @@ public class RepoFileDistiller {
 				newSource.content,
 				newSource.toString(),
 				versionConstants[newLevel]).getCompilationUnit();
-		List<SourceCodeChange> subChanges = new LinkedList<SourceCodeChange>();
-
+		LinkedList<FineChange> fineChanges = new LinkedList<>();
 		for (SourceCodeChange c : changes) {
-			SourceCodeEntity entity = c.getChangedEntity();
-			int start = entity.getStartPosition();
-			int end = entity.getEndPosition();
+			FineChange fChange = new FineChange(c);
 			SubChangeCollector collector = null;
 			if (c instanceof Insert) {
-				collector = new InsertCollector(start, end);
+				collector = new InsertCollector(fChange);
 				newAST.traverse(collector, newAST.scope);
 			} else if (c instanceof Delete) {
-				collector = new DeleteCollector(start, end);
+				collector = new DeleteCollector(fChange);
 				oldAST.traverse(collector, oldAST.scope);
 			}
-			if (collector != null && collector.getChanges().size() > 0) {
-				List<SourceCodeChange> currentChanges = collector.getChanges();
+			if (collector != null && fChange.subChanges.size() > 0) {
 				// remove the out-most element, assuming pre-order search
-				currentChanges.remove(0);
-				subChanges.addAll(currentChanges);
+				fChange.subChanges.remove(0);
 			}
+			fineChanges.add(fChange);
 		}
-		changes.addAll(subChanges);
-		return changes;
+		return fineChanges;
 	}
 }

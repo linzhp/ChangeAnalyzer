@@ -1,44 +1,10 @@
 package edu.ucsc.cs.analysis;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Stack;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.AssertStatement;
-import org.eclipse.jdt.internal.compiler.ast.Assignment;
-import org.eclipse.jdt.internal.compiler.ast.BreakStatement;
-import org.eclipse.jdt.internal.compiler.ast.CaseStatement;
-import org.eclipse.jdt.internal.compiler.ast.Clinit;
-import org.eclipse.jdt.internal.compiler.ast.CompoundAssignment;
-import org.eclipse.jdt.internal.compiler.ast.ConstructorDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ContinueStatement;
-import org.eclipse.jdt.internal.compiler.ast.DoStatement;
-import org.eclipse.jdt.internal.compiler.ast.EmptyStatement;
-import org.eclipse.jdt.internal.compiler.ast.ExplicitConstructorCall;
-import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ForStatement;
-import org.eclipse.jdt.internal.compiler.ast.ForeachStatement;
-import org.eclipse.jdt.internal.compiler.ast.IfStatement;
-import org.eclipse.jdt.internal.compiler.ast.Initializer;
-import org.eclipse.jdt.internal.compiler.ast.Javadoc;
-import org.eclipse.jdt.internal.compiler.ast.LabeledStatement;
-import org.eclipse.jdt.internal.compiler.ast.LocalDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.MemberValuePair;
-import org.eclipse.jdt.internal.compiler.ast.MessageSend;
-import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ReturnStatement;
-import org.eclipse.jdt.internal.compiler.ast.SwitchStatement;
-import org.eclipse.jdt.internal.compiler.ast.SynchronizedStatement;
-import org.eclipse.jdt.internal.compiler.ast.ThrowStatement;
-import org.eclipse.jdt.internal.compiler.ast.TryStatement;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.WhileStatement;
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
-import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
-import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
-import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
+import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 
 import ch.uzh.ifi.seal.changedistiller.ast.java.JavaASTNodeTypeConverter;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
@@ -46,29 +12,27 @@ import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
 
 public abstract class SubChangeCollector extends ASTVisitor {
-	protected List<SourceCodeChange> changes = new LinkedList<SourceCodeChange>();
-
-	public List<SourceCodeChange> getChanges() {
-		return changes;
-	}
-
 	private Stack<ASTNode> ancestors = new Stack<>();
-	private int start, end;
 	protected JavaASTNodeTypeConverter converter = new JavaASTNodeTypeConverter();
+	protected FineChange fineChange;
 
-	public SubChangeCollector(int start, int end) {
-		this.start = start;
-		this.end = end;
+	public SubChangeCollector(FineChange change) {
+		this.fineChange = change;
 	}
 
 	protected boolean isSubNode(ASTNode node) {
-		return node.sourceStart >= start && node.sourceEnd <= end;
+		SourceCodeEntity changedEntity = fineChange.change.getChangedEntity();
+		return node.sourceStart >= changedEntity.getStartPosition() && 
+				node.sourceEnd <= changedEntity.getEndPosition();
 	}
 
 	/**
 	 * don't go into any statement
 	 */
 	private boolean shouldVisitChildren(ASTNode node) {
+		SourceCodeEntity changedEntity = fineChange.change.getChangedEntity();
+		int start = changedEntity.getStartPosition(), 
+				end = changedEntity.getEndPosition();
 		if (node instanceof TypeDeclaration) {
 			TypeDeclaration type = (TypeDeclaration) node;
 			return type.declarationSourceEnd >= start
@@ -416,7 +380,7 @@ public abstract class SubChangeCollector extends ASTVisitor {
 			SourceCodeEntity parent = pType == null ? null
 					: new SourceCodeEntity(null, pType, null);
 			SourceCodeChange change = newChange(node, parent);
-			changes.add(change);
+			fineChange.addSubChange(change);
 		}
 		ancestors.push(node);
 		return shouldVisitChildren(node);

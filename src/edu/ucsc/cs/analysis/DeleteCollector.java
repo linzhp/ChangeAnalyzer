@@ -14,8 +14,8 @@ import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
 
 public class DeleteCollector extends SubChangeCollector {
 
-	public DeleteCollector(int start, int end) {
-		super(start, end);
+	public DeleteCollector(FineChange change) {
+		super(change);
 	}
 
 	@Override

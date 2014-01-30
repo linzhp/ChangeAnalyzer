@@ -16,8 +16,8 @@ import edu.ucsc.cs.utils.LogManager;
 
 public class InsertCollector extends SubChangeCollector {
 	
-	public InsertCollector(int start, int end) {
-		super(start, end);
+	public InsertCollector(FineChange change) {
+		super(change);
 	}
 
 	@Override

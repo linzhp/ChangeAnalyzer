@@ -76,7 +76,7 @@ public class Commit {
 				DBCursor cursor = extractedChanges.find(
 						new BasicDBObject("commitId", id).append("fileId", fileId));
 				if (!cursor.hasNext()) {
-					distiller.extractASTDelta(fileAction);
+					distiller.process(fileAction);
 				}
 				commitGraph.addCommit(fileId, id);
 			}

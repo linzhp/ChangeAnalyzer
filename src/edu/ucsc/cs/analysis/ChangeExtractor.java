@@ -26,9 +26,11 @@ import edu.ucsc.cs.utils.LogManager;
 public class ChangeExtractor extends ChangeProcessor {
 	
 	private DBCollection collection;
+	private int repoId;
 
-	public ChangeExtractor() {
+	public ChangeExtractor(int repoId) {
 		collection = DatabaseManager.getMongoDB().getCollection("changes");
+		this.repoId = repoId;
 	}
 
 	/**
@@ -37,8 +39,9 @@ public class ChangeExtractor extends ChangeProcessor {
 	 */
 	public static void main(String[] args) throws Exception {
 		long start = System.currentTimeMillis();
-		ChangeExtractor reducer = new ChangeExtractor();
-		Repository repo = new Repository(1, reducer);
+		Integer repoId = Integer.valueOf(args[0]);
+		ChangeExtractor reducer = new ChangeExtractor(repoId);
+		Repository repo = new Repository(repoId, reducer);
 		repo.extractChanges(null);
 		System.out.println("Time spent: " + 
 				(System.currentTimeMillis() - start)/1000 +
@@ -57,7 +60,8 @@ public class ChangeExtractor extends ChangeProcessor {
 		stmt.close();
 		Logger logger = LogManager.getLogger();
 		for (SourceCodeChange c : changes) {
-			BasicDBObject dbObj = new BasicDBObject("fileId", fileID)
+			BasicDBObject dbObj = new BasicDBObject("repoId", repoId)
+			.append("fileId", fileID)
 			.append("commitId", commitID)
 			.append("date", date.toString().split("\\.")[0]) // yyyy-mm-dd hh:mm:ss
 			.append("changeType", c.getLabel())

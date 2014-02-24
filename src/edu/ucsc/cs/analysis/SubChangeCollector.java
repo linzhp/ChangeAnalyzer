@@ -329,7 +329,6 @@ public abstract class SubChangeCollector extends ASTVisitor {
 
 	@Override
 	public boolean visit(MemberValuePair pair, BlockScope scope) {
-		System.out.println("Here is a MemberValuePair: " + pair);
 		return true;
 	}
 

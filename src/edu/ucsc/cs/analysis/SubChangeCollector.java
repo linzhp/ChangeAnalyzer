@@ -66,7 +66,7 @@ public abstract class SubChangeCollector extends ASTVisitor {
 	}
 
 	/**
-	 * don't go into any statement
+	 * Optimization to speedup the traversal, shouldn't change the behavior
 	 */
 	private boolean shouldVisitChildren(ASTNode node) {
 		if (node instanceof TypeDeclaration) {
@@ -78,7 +78,7 @@ public abstract class SubChangeCollector extends ASTVisitor {
 			return method.declarationSourceEnd >= start
 					&& method.declarationSourceStart <= end;
 		} else {
-			return false;
+			return true;
 		}
 	}
 

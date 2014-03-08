@@ -44,7 +44,7 @@ public class Simulator {
 	}
 
 	public void run(int numCommits) {
-		Sampler sampler = new Sampler(2.483616, 1.659271);
+		Sampler sampler = new Sampler(2.092234, 1.309256);
 		for (int i = 0; i < numCommits; i++) {
 			List<BasicDBObject> changes = sampler.generateCommit();
 			for (BasicDBObject c : changes) {

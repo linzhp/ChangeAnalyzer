@@ -47,7 +47,7 @@ public class DatabaseManager {
     public static DB getMongoDB() {
     	if (db == null) {
             try {
-        		MongoClient mongo = new MongoClient();
+        		MongoClient mongo = new MongoClient("slamdance.soe.ucsc.edu");
         		db = mongo.getDB("evolution");
             } catch (Exception e) {
                 LogManager.getLogger().severe(e.toString());

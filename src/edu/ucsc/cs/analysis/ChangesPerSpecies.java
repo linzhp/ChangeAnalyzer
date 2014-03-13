@@ -3,18 +3,24 @@ package edu.ucsc.cs.analysis;
 import java.util.HashMap;
 
 import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 
-public class ChangesPerCategoryEpoch implements ChangeReducer {
+import edu.ucsc.cs.utils.DatabaseManager;
+
+public class ChangesPerSpecies implements ChangeReducer {
 	private HashMap<BasicDBObject, Integer> counters = new HashMap<BasicDBObject, Integer>();
-	public HashMap<BasicDBObject, Integer> getCounters() {
-		return counters;
+	private String setName;
+	
+	public ChangesPerSpecies(String setName) {
+		this.setName = setName;
 	}
+
 	@Override
 	public void add(int epochId, DBObject change) {
 		BasicDBObject changeCategory = new BasicDBObject("changeType", change.get("changeType"))
-		.append("entity", change.get("entity")).append("changeClass", change.get("changeClass"))
-		.append("commitId", change.get("commitId"));
+		.append("entity", change.get("entity")).append("changeClass", change.get("changeClass"));
 		switch ((String)change.get("changeClass")) {
 		case "Update": changeCategory.append("newEntity", change.get("newEntity")); break;
 		case "Move": changeCategory.append("newParentEntity", change.get("newParentEntity")); break;
@@ -29,5 +35,15 @@ public class ChangesPerCategoryEpoch implements ChangeReducer {
 			counters.put(changeCategory, 1);
 		}
 	}
-
+	
+	@Override
+	public void done() {
+		DB mongo = DatabaseManager.getMongoDB();
+		DBCollection collection = mongo.getCollection("changesPerSpecies");
+		for (BasicDBObject key: counters.keySet()) {
+			collection.insert(new BasicDBObject("change", key).
+					append("freq", counters.get(key))
+					.append("set", setName));
+		}
+	}
 }

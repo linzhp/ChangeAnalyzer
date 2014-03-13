@@ -4,13 +4,13 @@ import java.util.HashMap;
 
 import com.mongodb.DBObject;
 
-public class ChangeTypeCounter implements ChangeReducer {
+public class ChangesPerType implements ChangeReducer {
 
 	private HashMap<String, Record> counters;
 	private String setName;
 
 	
-	public ChangeTypeCounter(String setName, HashMap<String, Record> counters) {
+	public ChangesPerType(String setName, HashMap<String, Record> counters) {
 		this.setName = setName;
 		this.counters = counters;
 	}
@@ -25,6 +25,12 @@ public class ChangeTypeCounter implements ChangeReducer {
 			r.increase(setName, 1);
 			counters.put(changeType, r);			
 		}
+	}
+
+	@Override
+	public void done() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

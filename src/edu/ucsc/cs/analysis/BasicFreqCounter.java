@@ -22,7 +22,6 @@ public class BasicFreqCounter extends ChangeProcessor {
 			changeFrequencies.put(category, count);
 		}
 	}
-	
 
 	/**
 	 * @param args

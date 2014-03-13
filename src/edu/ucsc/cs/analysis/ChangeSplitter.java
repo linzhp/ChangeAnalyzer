@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
@@ -31,11 +30,11 @@ import edu.ucsc.cs.utils.FileUtils;
  */
 public class ChangeSplitter {
 	private final int FILE_ID = 2996;
-	private List<ChangeReducer> trainingReducers;
-	private List<ChangeReducer> testReducers;
+	private List<? extends ChangeReducer> trainingReducers;
+	private List<? extends ChangeReducer> testReducers;
 	private DBCollection changesColl;
-	public ChangeSplitter(List<ChangeReducer> trainingReducers,
-			List<ChangeReducer> testReducers) {
+	public ChangeSplitter(List<? extends ChangeReducer> trainingReducers,
+			List<? extends ChangeReducer> testReducers) {
 		this.trainingReducers = trainingReducers;
 		this.testReducers = testReducers;
 		DB mongo = DatabaseManager.getMongoDB();
@@ -172,80 +171,15 @@ public class ChangeSplitter {
 	 * @throws IOException 
 	 */
 	public static void main(String[] args) throws SQLException, IOException {
-		ChangesPerEpoch trainingChangesPerCommit = new ChangesPerEpoch(),
-				testChangesPerCommit = new ChangesPerEpoch();
-		ChangesPerCategory trainingChangesPerCategory = new ChangesPerCategory(),
-				testChangesPerCategory = new ChangesPerCategory();
-		ChangesPerCategoryEpoch trainingChangesPerCategoryEpoch = new ChangesPerCategoryEpoch(),
-				testChangesPerCategoryEpoch = new ChangesPerCategoryEpoch();
-		HashMap<String, Record> counters = new HashMap<String, Record>();
-		ChangeTypeCounter trainingCounter = new ChangeTypeCounter("training", counters),
-				testCounter = new ChangeTypeCounter("test", counters);
+		ChangesPerTypeEpoch cpte = new ChangesPerTypeEpoch();
 		ChangeSplitter splitter = new ChangeSplitter(
-				Arrays.asList(trainingChangesPerCategory, 
-						trainingChangesPerCommit, 
-						trainingCounter,
-						trainingChangesPerCategoryEpoch),
-				Arrays.asList(testChangesPerCategory, 
-						testChangesPerCommit, 
-						testCounter,
-						testChangesPerCategoryEpoch));
-		splitter.splitByCommit(0.2, 400, 20);
-		
-		DB mongo = DatabaseManager.getMongoDB();
-		
-		DBCollection collection = mongo.getCollection("changesPerEpoch");
-		HashMap<Integer, Integer> changesPerCommit = trainingChangesPerCommit.getCounters();
-		for (Integer key: changesPerCommit.keySet()) {
-			collection.insert(new BasicDBObject("commit_id", key)
-			.append("freq", changesPerCommit.get(key))
-			.append("set", "training"));
-		}
-		
-		changesPerCommit = testChangesPerCommit.getCounters();
-		for (Integer key: changesPerCommit.keySet()) {
-			collection.insert(new BasicDBObject("commit_id", key)
-			.append("freq", changesPerCommit.get(key))
-			.append("set", "test"));
-		}
-		
-		collection = mongo.getCollection("changesPerCategory");
-		HashMap<BasicDBObject, Integer> changesPerCatergory = trainingChangesPerCategory.getCounters();
-		for (BasicDBObject key: changesPerCatergory.keySet()) {
-			collection.insert(new BasicDBObject("change", key).
-					append("freq", changesPerCatergory.get(key))
-					.append("set", "training"));
-		}
-
-		changesPerCatergory = testChangesPerCategory.getCounters();
-		for (BasicDBObject key: changesPerCatergory.keySet()) {
-			collection.insert(new BasicDBObject("change", key).
-					append("freq", changesPerCatergory.get(key))
-					.append("set", "test"));
-		}
-		
-		collection = mongo.getCollection("contingency");
-		for (String changeType: counters.keySet()) {
-			Record freq = counters.get(changeType);
-			collection.insert(new BasicDBObject("_id", changeType)
-			.append("training", freq.training)
-			.append("test", freq.test));
-		}
-		
-		collection = mongo.getCollection("changesPerCategoryEpoch");
-		HashMap<BasicDBObject, Integer> changesPerCategoryEpoch = trainingChangesPerCategoryEpoch.getCounters();
-		for (BasicDBObject key: changesPerCategoryEpoch.keySet()) {
-			collection.insert(new BasicDBObject("change", key)
-			.append("freq", changesPerCategoryEpoch.get(key))
-			.append("set", "training"));			
-		}
-		
-		changesPerCategoryEpoch = testChangesPerCategoryEpoch.getCounters();
-		for (BasicDBObject key: changesPerCategoryEpoch.keySet()) {
-			collection.insert(new BasicDBObject("change", key)
-			.append("freq", changesPerCategoryEpoch.get(key))
-			.append("set", "test"));						
-		}
+				Arrays.asList(
+						cpte
+						),
+				Arrays.asList(
+						cpte
+						));
+		splitter.splitByCommit(1, 400, 20);		
 	}
 
 }

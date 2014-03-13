@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.java.JavaEntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Move;
@@ -60,12 +61,13 @@ public class ChangeExtractor extends ChangeProcessor {
 		stmt.close();
 		Logger logger = LogManager.getLogger();
 		for (SourceCodeChange c : changes) {
+			SourceCodeEntity changedEntity = c.getChangedEntity();
 			BasicDBObject dbObj = new BasicDBObject("repoId", repoId)
 			.append("fileId", fileID)
 			.append("commitId", commitID)
 			.append("date", date.toString().split("\\.")[0]) // yyyy-mm-dd hh:mm:ss
 			.append("changeType", c.getLabel())
-			.append("entity", c.getChangedEntity().getLabel())
+			.append("entity", changedEntity.getLabel())
 			.append("changeClass", c.getClass().getSimpleName());
 			if (c instanceof Update) {
 				dbObj.append("newEntity", ((Update) c).getNewEntity().getLabel());
@@ -76,6 +78,10 @@ public class ChangeExtractor extends ChangeProcessor {
 					if (parentType != null) {
 						dbObj.append("parentEntity", parentType.toString());
 					}
+				}
+				// extract parent class information
+				if (changedEntity.getType() == JavaEntityType.CLASS) {
+					
 				}
 			} else if (c instanceof Move) {
 				Move m = (Move)c;

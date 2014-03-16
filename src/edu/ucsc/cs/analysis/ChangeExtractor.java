@@ -94,4 +94,7 @@ public class ChangeExtractor extends ChangeProcessor {
 		}
 	}
 
+	static String getParentClassName(SourceCodeChange change) {
+		return null;
+	}
 }

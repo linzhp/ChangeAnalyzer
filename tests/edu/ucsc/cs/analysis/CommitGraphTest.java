@@ -1,4 +1,4 @@
-package edu.ucsc.cs.test;
+package edu.ucsc.cs.analysis;
 
 import static org.junit.Assert.*;
 

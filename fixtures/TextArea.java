@@ -69,7 +69,7 @@ import org.gjt.sp.util.ThreadUtilities;
  * @author kpouer (rafactoring into standalone text area)
  * @version $Id$
  */
-public abstract class TextArea extends JComponent
+public abstract class TextArea extends org.gjt.sp.jedit.textarea.JComponent
 {
 	//{{{ TextArea constructor
 	/**

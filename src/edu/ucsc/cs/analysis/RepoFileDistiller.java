@@ -88,7 +88,8 @@ public class RepoFileDistiller {
 					new FileRevision(previousCommitId, fileId, content),
 					ChangeType.REMOVED_CLASS);
 			if (changes != null) {
-				reducer.add(changes, fileId, commitId);
+				// using commitId instead of previousCommitId
+				reducer.add(changes, new FileRevision(commitId, fileId, content));
 			}
 			fileContentCache.remove(fileId);
 		}
@@ -106,7 +107,7 @@ public class RepoFileDistiller {
 			List<SourceCodeChange> changes = extractChangesFromContent(
 					fileRevision, ChangeType.ADDITIONAL_CLASS);
 			if (changes != null) {
-				reducer.add(changes, fileId, commitId);
+				reducer.add(changes, fileRevision);
 				fileContentCache.put(fileId, fileRevision);
 			}
 		}
@@ -114,24 +115,7 @@ public class RepoFileDistiller {
 
 	private static List<SourceCodeChange> extractChangesFromContent(
 			FileRevision code, ChangeType changeType) {
-		CompilationUnitDeclaration tree = null;
-		int i = 0;
-		while (tree == null) {
-			try {
-				tree = JavaCompilationUtils.compile(code.content,
-						code.toString(), versionConstants[i])
-						.getCompilationUnit();
-			} catch (InvalidSyntaxException e) {
-				if (i < sourceLevels.length - 1) {
-					logger.info("Failed to parse " + code
-							+ " with source level " + sourceLevels[i++]
-							+ ", trying with " + sourceLevels[i]);
-				} else {
-					logger.warning("Failed to parse " + code);
-					return null;
-				}
-			}
-		}
+		CompilationUnitDeclaration tree = JavaParser.parse(code);
 		SubChangeCollector collector;
 		if (changeType == ChangeType.ADDITIONAL_CLASS) {
 			collector = new InsertCollector(0, Integer.MAX_VALUE);
@@ -161,13 +145,13 @@ public class RepoFileDistiller {
 				String sourceContent = FileUtils.getContent(
 						sourceFileId, sourceCommitId);
 				String targetContent = FileUtils.getContent(fileId, commitId);
+				FileRevision fv = new FileRevision(commitId, fileId,
+						targetContent);
 				List<SourceCodeChange> changes = extractDiff(new FileRevision(
-						sourceCommitId, sourceFileId, sourceContent), new FileRevision(
-						commitId, fileId, targetContent));
+						sourceCommitId, sourceFileId, sourceContent), fv);
 				if (changes != null) {
-					reducer.add(changes, fileId, commitId);
-					fileContentCache.put(fileId, new FileRevision(commitId, fileId,
-							targetContent));
+					reducer.add(changes, fv);
+					fileContentCache.put(fileId, fv);
 				}				
 			}
 			fileInfoStmt.close();
@@ -191,21 +175,17 @@ public class RepoFileDistiller {
 				commitId);
 		String newContent = FileUtils.getContent(fileId, commitId);
 		String oldContent = getPreviousContent(fileId, previousCommitId);
+		FileRevision fileRevision = new FileRevision(commitId, fileId,
+				newContent);
 		List<SourceCodeChange> changes = extractDiff(new FileRevision(
-				previousCommitId, fileId, oldContent), new FileRevision(
-				commitId, fileId, newContent));
+				previousCommitId, fileId, oldContent), fileRevision);
 		if (changes == null || changes.size() == 0) {
 			logger.warning("No changes distilled for file " + fileId
 					+ " at commit_id " + commitId + " from previous commit id "
 					+ previousCommitId);
 		} else {
-			this.reducer.add(changes, fileId, commitId);
-		}
-		if (changes != null) { // can't check newcontent alone, as it can have
-								// invalid syntax
-			assert (newContent != null);
-			fileContentCache.put(fileId, new FileRevision(commitId, fileId,
-					newContent));
+			this.reducer.add(changes, fileRevision);
+			fileContentCache.put(fileId, fileRevision);
 		}
 	}
 

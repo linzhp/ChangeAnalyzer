@@ -6,9 +6,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import org.eclipse.jdt.internal.compiler.ASTVisitor;
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
+import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
+
+import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.java.JavaEntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
@@ -50,10 +60,10 @@ public class ChangeExtractor extends ChangeProcessor {
 	}
 
 	@Override
-	public void add(List<SourceCodeChange> changes, int fileID, int commitID) throws IOException, SQLException {
+	public void add(List<SourceCodeChange> changes, FileRevision fv) throws IOException, SQLException {
 		Connection conn = DatabaseManager.getSQLConnection();
 		Statement stmt = conn.createStatement();
-		ResultSet rs = stmt.executeQuery("SELECT * FROM scmlog WHERE id = " + commitID);
+		ResultSet rs = stmt.executeQuery("SELECT * FROM scmlog WHERE id = " + fv.commitId);
 		Timestamp date = null;
 		if (rs.next()) {
 			date = rs.getTimestamp("date");
@@ -63,8 +73,8 @@ public class ChangeExtractor extends ChangeProcessor {
 		for (SourceCodeChange c : changes) {
 			SourceCodeEntity changedEntity = c.getChangedEntity();
 			BasicDBObject dbObj = new BasicDBObject("repoId", repoId)
-			.append("fileId", fileID)
-			.append("commitId", commitID)
+			.append("fileId", fv.fileId)
+			.append("commitId", fv.commitId)
 			.append("date", date.toString().split("\\.")[0]) // yyyy-mm-dd hh:mm:ss
 			.append("changeType", c.getLabel())
 			.append("entity", changedEntity.getLabel())
@@ -94,7 +104,10 @@ public class ChangeExtractor extends ChangeProcessor {
 		}
 	}
 
-	static String getParentClassName(SourceCodeChange change) {
-		return null;
+	static String[] getParentClassNames(int start, int end, FileRevision code) {
+		CompilationUnitDeclaration tree = JavaParser.parse(code);
+		ParentClassFinder visitor = new ParentClassFinder(start, end);
+		tree.traverse(visitor, tree.scope);
+		return visitor.getParentNames();
 	}
 }

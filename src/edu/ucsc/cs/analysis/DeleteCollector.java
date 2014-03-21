@@ -8,6 +8,7 @@ import org.eclipse.jdt.internal.compiler.ast.Statement;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.SourceRange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
@@ -34,7 +35,7 @@ public class DeleteCollector extends SubChangeCollector {
 			cType = ChangeType.DOC_DELETE;
 		}
 		SourceCodeEntity thisEntity = new SourceCodeEntity(null, 
-				converter.convertNode(node), null);
+				converter.convertNode(node), new SourceRange(node.sourceStart(), node.sourceEnd()));
 		return new Delete(cType, null, thisEntity, parentEntity);
 	}
 

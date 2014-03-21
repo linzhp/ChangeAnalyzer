@@ -9,6 +9,7 @@ import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.SourceRange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Insert;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
@@ -40,7 +41,7 @@ public class InsertCollector extends SubChangeCollector {
 			LogManager.getLogger().severe("Cannot convert " + node);
 		}
 		SourceCodeEntity thisEntity = new SourceCodeEntity(null, 
-				eType, null);
+				eType, new SourceRange(node.sourceStart(), node.sourceEnd()));
 		return new Insert(cType, null, thisEntity, parentEntity);
 	}
 

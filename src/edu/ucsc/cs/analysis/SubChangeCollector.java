@@ -4,7 +4,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 
-import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.AssertStatement;
 import org.eclipse.jdt.internal.compiler.ast.Assignment;
@@ -45,41 +44,18 @@ import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
 
-public abstract class SubChangeCollector extends ASTVisitor {
+public abstract class SubChangeCollector extends BaseVisitor {
 	protected List<SourceCodeChange> changes = new LinkedList<SourceCodeChange>();
 
 	public List<SourceCodeChange> getChanges() {
 		return changes;
 	}
 
-	private Stack<ASTNode> ancestors = new Stack<>();
-	private int start, end;
+	Stack<ASTNode> ancestors = new Stack<>();
 	protected JavaASTNodeTypeConverter converter = new JavaASTNodeTypeConverter();
 
 	public SubChangeCollector(int start, int end) {
-		this.start = start;
-		this.end = end;
-	}
-
-	protected boolean isSubNode(ASTNode node) {
-		return node.sourceStart >= start && node.sourceEnd <= end;
-	}
-
-	/**
-	 * Optimization to speedup the traversal, shouldn't change the behavior
-	 */
-	private boolean shouldVisitChildren(ASTNode node) {
-		if (node instanceof TypeDeclaration) {
-			TypeDeclaration type = (TypeDeclaration) node;
-			return type.declarationSourceEnd >= start
-					&& type.declarationSourceStart <= end;
-		} else if (node instanceof MethodDeclaration) {
-			MethodDeclaration method = (MethodDeclaration) node;
-			return method.declarationSourceEnd >= start
-					&& method.declarationSourceStart <= end;
-		} else {
-			return true;
-		}
+		super(start, end);
 	}
 
 	@Override
@@ -94,13 +70,13 @@ public abstract class SubChangeCollector extends ASTVisitor {
 
 	@Override
 	public boolean visit(TypeDeclaration td, BlockScope scope) {
-		return false;
+		return visit(td);
 	}
 
-	// @Override
-	// public void endVisit(TypeDeclaration td, BlockScope scope) {
-	// ancestors.pop();
-	// }
+	@Override
+	public void endVisit(TypeDeclaration td, BlockScope scope) {
+		ancestors.pop();
+	}
 
 	@Override
 	public boolean visit(TypeDeclaration td, CompilationUnitScope scope) {
@@ -134,8 +110,7 @@ public abstract class SubChangeCollector extends ASTVisitor {
 
 	@Override
 	public boolean visit(AssertStatement assertStatement, BlockScope scope) {
-		visit(assertStatement);
-		return false;
+		return visit(assertStatement);
 	}
 
 	@Override
@@ -404,8 +379,8 @@ public abstract class SubChangeCollector extends ASTVisitor {
 		ancestors.pop();
 	}
 
-	private boolean visit(ASTNode node) {
-		if (isSubNode(node)) {
+	boolean visit(ASTNode node) {
+		if (isInRange(node)) {
 			EntityType pType;
 			if (ancestors.empty()) {
 				pType = null;

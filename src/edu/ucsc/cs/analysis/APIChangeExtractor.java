@@ -17,8 +17,7 @@ public class APIChangeExtractor extends ChangeProcessor {
 	}
 
 	@Override
-	public void add(List<SourceCodeChange> changes, int fileID, int commitID) throws IOException {
-		
+	public void add(List<SourceCodeChange> changes, FileRevision fv) throws IOException {
 		for(SourceCodeChange c : changes) {
 			if (c.getChangeType().isDeclarationChange()) {
 				writer.write(c.getLabel());

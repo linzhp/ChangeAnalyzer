@@ -10,7 +10,7 @@ public class BasicFreqCounter extends ChangeProcessor {
 	public HashMap<String, Integer> changeFrequencies = new HashMap<String, Integer>();
 
 	@Override
-	public void add(List<SourceCodeChange> changes, int fileID, int commitID) {
+	public void add(List<SourceCodeChange> changes, FileRevision fv) {
 		for (SourceCodeChange c : changes) {
 			String category = c.getLabel();
 			Integer count = changeFrequencies.get(category);

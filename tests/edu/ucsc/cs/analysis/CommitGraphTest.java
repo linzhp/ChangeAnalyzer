@@ -7,7 +7,6 @@ import java.sql.SQLException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import edu.ucsc.cs.analysis.*;
 import edu.ucsc.cs.utils.DatabaseManager;
 
 public class CommitGraphTest {

@@ -18,10 +18,6 @@ public class StochasticGrammarBuilder {
 		Collections.sort(commitIds);
 		for (int commitId : commitIds) {
 			DBCursor cursor = collection.find(new BasicDBObject("commitId", commitId));
-			while (cursor.hasNext()) {
-				DBObject change = cursor.next();
-				
-			}
 		}
 	}
 

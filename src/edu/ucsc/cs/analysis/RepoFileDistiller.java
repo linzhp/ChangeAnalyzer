@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -122,8 +123,12 @@ public class RepoFileDistiller {
 		} else {
 			collector = new DeleteCollector(0, Integer.MAX_VALUE);
 		}
-		tree.traverse(collector, tree.scope);
-		return collector.getChanges();
+		if (tree != null) {
+			tree.traverse(collector, tree.scope);
+			return collector.getChanges();			
+		} else {
+			return new ArrayList<>();
+		}
 	}
 
 	private void processCopy(int fileId, int commitId, int actionId) throws SQLException,
@@ -180,7 +185,7 @@ public class RepoFileDistiller {
 		List<SourceCodeChange> changes = extractDiff(new FileRevision(
 				previousCommitId, fileId, oldContent), fileRevision);
 		if (changes == null || changes.size() == 0) {
-			logger.warning("No changes distilled for file " + fileId
+			logger.info("No changes distilled for file " + fileId
 					+ " at commit_id " + commitId + " from previous commit id "
 					+ previousCommitId);
 		} else {

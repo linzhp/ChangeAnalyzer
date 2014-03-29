@@ -1,6 +1,7 @@
 package edu.ucsc.cs.analysis;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
 
 import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
@@ -9,15 +10,12 @@ import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
 import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
-
 public class ParentClassFinder extends BaseVisitor {
 	public ParentClassFinder(int start, int end) {
 		super(start, end);
 	}
 
-	ArrayList<TypeReference> parents = new ArrayList<>();
+	LinkedList<String> parentNames = new LinkedList<>();
 
 	@Override
 	public boolean visit(TypeDeclaration td, ClassScope scope) {
@@ -42,16 +40,20 @@ public class ParentClassFinder extends BaseVisitor {
 	protected boolean visit(TypeDeclaration td) {
 		if (isInRange(td)) {
 			if (td.superclass != null) {
-				parents.add(td.superclass);
+				parentNames.add(td.superclass.toString());
 			}
 			if (td.superInterfaces != null) {
 				for (TypeReference itf : td.superInterfaces) {
-					parents.add(itf);
+					parentNames.add(itf.toString());
 				}
 			}
 			if (td.allocation != null) {
-				// anonymous class
-				parents.add(td.allocation.type);
+				if (td.allocation.type != null) {
+					// anonymous class
+					parentNames.add(td.allocation.type.toString());					
+				} else {
+					parentNames.add(new String(td.allocation.enumConstant.name));
+				}
 			}
 			return false; // done!
 		} else {
@@ -59,13 +61,7 @@ public class ParentClassFinder extends BaseVisitor {
 		}
 	}
 	
-	public String[] getParentNames() {
-		return Collections2.transform(parents, new Function<TypeReference, String>() {
-			@Override
-			public String apply(TypeReference parent) {
-				return parent.toString();
-			}
-			
-		}).toArray(new String[parents.size()]);
+	public Collection<String> getParentNames() {
+		return parentNames;
 	}
 }

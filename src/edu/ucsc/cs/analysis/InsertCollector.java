@@ -40,7 +40,7 @@ public class InsertCollector extends SubChangeCollector {
 		if (eType == null) {
 			LogManager.getLogger().severe("Cannot convert " + node);
 		}
-		SourceCodeEntity thisEntity = new SourceCodeEntity(null, 
+		SourceCodeEntity thisEntity = new SourceCodeEntity(node.toString(), 
 				eType, new SourceRange(node.sourceStart(), node.sourceEnd()));
 		return new Insert(cType, null, thisEntity, parentEntity);
 	}

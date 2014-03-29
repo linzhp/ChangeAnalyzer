@@ -6,19 +6,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.TypeReference;
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
-import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
-import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
 
-import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.java.JavaEntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
@@ -77,10 +70,9 @@ public class ChangeExtractor extends ChangeProcessor {
 			.append("commitId", fv.commitId)
 			.append("date", date.toString().split("\\.")[0]) // yyyy-mm-dd hh:mm:ss
 			.append("changeType", c.getLabel())
-			.append("entity", changedEntity.getLabel())
-			.append("changeClass", c.getClass().getSimpleName());
+			.append("entity", entityToString(changedEntity));
 			if (c instanceof Update) {
-				dbObj.append("newEntity", ((Update) c).getNewEntity().getLabel());
+				dbObj.append("newEntity", entityToString(((Update) c).getNewEntity()));
 			} else if (c instanceof Insert || c instanceof Delete) {
 				SourceCodeEntity parentEntity = c.getParentEntity();
 				if (parentEntity != null && parentEntity.getType() != null) {
@@ -91,20 +83,32 @@ public class ChangeExtractor extends ChangeProcessor {
 				}
 				// extract parent class information
 				if (changedEntity.getType() == JavaEntityType.CLASS) {
-					
+					Collection<String> names = getParentClassNames(
+							changedEntity.getStartPosition(), 
+							changedEntity.getEndPosition(), fv);
+					dbObj.append("parentClasses", names);
 				}
 			} else if (c instanceof Move) {
 				Move m = (Move)c;
 				dbObj.append("newParentEntity", m.getNewParentEntity().getLabel());
 				if (m.getNewEntity().getType() != m.getChangedEntity().getType()) {
-					logger.warning("entity changed when moving: " + m.getChangedEntity() + "->" + m.getNewEntity());
+					logger.warning("entity changed when moving: " + 
+							m.getChangedEntity() + "->" + m.getNewEntity());
 				}
 			}
 			collection.insert(dbObj);
 		}
 	}
+	
+	static String entityToString(SourceCodeEntity entity) {
+		if (entity.getType().isType()) {
+			return entity.getUniqueName();
+		} else {
+			return entity.getLabel();
+		}
+	}
 
-	static String[] getParentClassNames(int start, int end, FileRevision code) {
+	static Collection<String> getParentClassNames(int start, int end, FileRevision code) {
 		CompilationUnitDeclaration tree = JavaParser.parse(code);
 		ParentClassFinder visitor = new ParentClassFinder(start, end);
 		tree.traverse(visitor, tree.scope);

@@ -34,7 +34,7 @@ public class DeleteCollector extends SubChangeCollector {
 		} else if (node instanceof Javadoc) {
 			cType = ChangeType.DOC_DELETE;
 		}
-		SourceCodeEntity thisEntity = new SourceCodeEntity(null, 
+		SourceCodeEntity thisEntity = new SourceCodeEntity(node.toString(), 
 				converter.convertNode(node), new SourceRange(node.sourceStart(), node.sourceEnd()));
 		return new Delete(cType, null, thisEntity, parentEntity);
 	}

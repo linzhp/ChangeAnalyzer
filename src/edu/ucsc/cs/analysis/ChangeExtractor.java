@@ -101,7 +101,11 @@ public class ChangeExtractor extends ChangeProcessor {
 	}
 	
 	static String entityToString(SourceCodeEntity entity) {
-		if (entity.getType().isType()) {
+		EntityType type = entity.getType();
+		if (type.isType() || 
+				type.isStructureEntityType() ||
+				type.isMethod() ||
+				type.isField()) {
 			return entity.getUniqueName();
 		} else {
 			return entity.getLabel();

@@ -15,7 +15,7 @@ import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
 import edu.ucsc.cs.utils.LogManager;
 
-public class InsertCollector extends SubChangeCollector {
+public class InsertCollector extends AllTypeCollector {
 	
 	public InsertCollector(int start, int end) {
 		super(start, end);

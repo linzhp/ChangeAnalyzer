@@ -10,7 +10,7 @@ import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
 import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
 
-public class ParentClassFinder extends BaseVisitor {
+public class ParentClassFinder extends RangeVisitor {
 	public ParentClassFinder(int start, int end) {
 		super(start, end);
 	}
@@ -45,14 +45,6 @@ public class ParentClassFinder extends BaseVisitor {
 			if (td.superInterfaces != null) {
 				for (TypeReference itf : td.superInterfaces) {
 					parentNames.add(itf.toString());
-				}
-			}
-			if (td.allocation != null) {
-				if (td.allocation.type != null) {
-					// anonymous class
-					parentNames.add(td.allocation.type.toString());					
-				} else {
-					parentNames.add(new String(td.allocation.enumConstant.name));
 				}
 			}
 			return false; // done!

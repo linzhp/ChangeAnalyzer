@@ -5,12 +5,12 @@ import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 
-public abstract class BaseVisitor extends ASTVisitor {
+public abstract class RangeVisitor extends ASTVisitor {
 
 	protected int start;
 	protected int end;
 
-	public BaseVisitor(int start, int end) {
+	public RangeVisitor(int start, int end) {
 		this.start = start;
 		this.end = end;
 	}

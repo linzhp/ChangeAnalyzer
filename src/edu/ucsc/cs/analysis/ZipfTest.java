@@ -16,7 +16,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 
 import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
-import edu.ucsc.cs.analysis.BaseVisitor;
+import edu.ucsc.cs.analysis.RangeVisitor;
 import edu.ucsc.cs.utils.DatabaseManager;
 
 
@@ -31,7 +31,7 @@ public class ZipfTest {
 		coll.insert(new BasicDBObject("veracity", Arrays.asList("crossbeam", "crosswise")));
 	}
 
-	class ParentClassFinder extends BaseVisitor {
+	class ParentClassFinder extends RangeVisitor {
 
 		public ParentClassFinder(int start, int end) {
 			super(start, end);

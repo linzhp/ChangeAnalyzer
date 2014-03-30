@@ -13,7 +13,7 @@ import ch.uzh.ifi.seal.changedistiller.model.entities.Delete;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeEntity;
 
-public class DeleteCollector extends SubChangeCollector {
+public class DeleteCollector extends AllTypeCollector {
 
 	public DeleteCollector(int start, int end) {
 		super(start, end);

@@ -32,7 +32,7 @@ import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
 import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
 
-public abstract class AllTypeCollector extends ClassChangeCollector {
+public abstract class AllTypeCollector extends SubChangeCollector {
 	public AllTypeCollector(int start, int end) {
 		super(start, end);
 	}

@@ -75,11 +75,8 @@ public class ChangeExtractor extends ChangeProcessor {
 				dbObj.append("newEntity", entityToString(((Update) c).getNewEntity()));
 			} else if (c instanceof Insert || c instanceof Delete) {
 				SourceCodeEntity parentEntity = c.getParentEntity();
-				if (parentEntity != null && parentEntity.getType() != null) {
-					EntityType parentType = parentEntity.getType();
-					if (parentType != null) {
-						dbObj.append("parentEntity", parentType.toString());
-					}
+				if (parentEntity != null ) {
+					dbObj.append("parentEntity", entityToString(parentEntity));
 				}
 				// extract parent class information
 				if (changedEntity.getType() == JavaEntityType.CLASS) {
@@ -102,10 +99,9 @@ public class ChangeExtractor extends ChangeProcessor {
 	
 	static String entityToString(SourceCodeEntity entity) {
 		EntityType type = entity.getType();
-		if (type.isType() || 
-				type.isStructureEntityType() ||
-				type.isMethod() ||
-				type.isField()) {
+		if (type == null) {
+			return null;
+		} else if (type.isType() || type.isStructureEntityType()) {
 			return entity.getUniqueName();
 		} else {
 			return entity.getLabel();

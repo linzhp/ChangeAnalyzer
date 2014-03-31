@@ -119,9 +119,9 @@ public class RepoFileDistiller {
 		CompilationUnitDeclaration tree = JavaParser.parse(code);
 		SubChangeCollector collector;
 		if (changeType == ChangeType.ADDITIONAL_CLASS) {
-			collector = new InsertCollector(0, Integer.MAX_VALUE);
+			collector = new InsertClassCollector(0, Integer.MAX_VALUE);
 		} else {
-			collector = new DeleteCollector(0, Integer.MAX_VALUE);
+			collector = new DeleteClassCollector(0, Integer.MAX_VALUE);
 		}
 		if (tree != null) {
 			tree.traverse(collector, tree.scope);
@@ -281,10 +281,10 @@ public class RepoFileDistiller {
 			int end = entity.getEndPosition();
 			SubChangeCollector collector = null;
 			if (c instanceof Insert) {
-				collector = new InsertCollector(start, end);
+				collector = new InsertClassCollector(start, end);
 				newAST.traverse(collector, newAST.scope);
 			} else if (c instanceof Delete) {
-				collector = new DeleteCollector(start, end);
+				collector = new DeleteClassCollector(start, end);
 				oldAST.traverse(collector, oldAST.scope);
 			}
 			if (collector != null && collector.getChanges().size() > 0) {

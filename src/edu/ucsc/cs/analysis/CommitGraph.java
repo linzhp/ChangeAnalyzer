@@ -1,12 +1,16 @@
 package edu.ucsc.cs.analysis;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
@@ -14,14 +18,14 @@ import edu.ucsc.cs.utils.DatabaseManager;
 import edu.ucsc.cs.utils.LogManager;
 
 public class CommitGraph {
-	private HashMap<Integer, TreeSet<Integer>> previousCommits;
+	private HashMap<Integer, Set<Integer>> previousCommits;
 	private Connection conn;
 	private Logger logger;
 
 	public CommitGraph() {
 		conn = DatabaseManager.getSQLConnection();
 		logger = LogManager.getLogger();
-		previousCommits = new HashMap<Integer, TreeSet<Integer>>();
+		previousCommits = new HashMap<>();
 	}
 
 	/**
@@ -35,62 +39,41 @@ public class CommitGraph {
 	 */
 	public int findPreviousCommitId(int fileId, int commitId)
 			throws SQLException {
-		TreeSet<Integer> pc = previousCommits.get(fileId);
+		Set<Integer> pc = previousCommits.get(fileId);
 		if (pc == null) {
 			return -1;
 		}
-		Iterator<Integer> it = pc.descendingIterator();
-		while (it.hasNext()) {
-			LinkedList<Integer> queue = new LinkedList<Integer>();
-			Integer prevCommit = it.next();
-			queue.add(prevCommit);
-			currentSearch: while (!queue.isEmpty()) {
-				Integer currentCommit = queue.pop();
-				if (currentCommit == commitId) {
-					// find an ancestor Commit
-					return prevCommit;
-				}
-
-				if (currentCommit > commitId) {
-					/*
-					 * Optimization: As the commit ids are in topological order,
-					 * if current commit id is greater than the target commit
-					 * ID, it is not possible for the former to be the parent of
-					 * the later.
-					 */
-					continue;
-				}
-				// add children to the queue
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt
-						.executeQuery("SELECT * from commit_graph where parent_id="
-								+ currentCommit);
-				while (rs.next()) {
-					int child = rs.getInt("commit_id");
-					if (pc.contains(child)) {
-						/*
-						 * Optimization Because commitId is not a merge commit,
-						 * it should only has one parent. Thus if currentCommit
-						 * has a child already in previousCommits, it is not the
-						 * preceding commit of commitId.
-						 */
-						break currentSearch;
-					} else {
-						queue.add(child);
-					}
-				}
+		HashSet<Integer> visited = new HashSet<>();
+		PreparedStatement stmt = conn.prepareStatement(
+				"SELECT parent_id FROM commit_graph WHERE commit_id=?");
+		ArrayDeque<Integer> frontier = new ArrayDeque<>();
+		frontier.add(commitId);
+		while (!frontier.isEmpty()) {
+			int currentCommitId = frontier.poll();
+			if (pc.contains(currentCommitId)) {
+				// found it!
 				stmt.close();
-
+				return currentCommitId;
 			}
-		}
+			stmt.setInt(1, currentCommitId);
+			ResultSet rs = stmt.executeQuery();
+			while (rs.next()) {
+				int parentId = rs.getInt("parent_id");
+				if (!visited.contains(parentId)) {
+					frontier.add(parentId);
+				}
+			}
+			visited.add(currentCommitId);
+		}	
 		logger.warning("No previous commit found for file " + fileId + "@ commit " + commitId);
+		stmt.close();
 		return -1;
 	}
 
 	public void addCommit(int fileId, int commitId) {
-		TreeSet<Integer> c = previousCommits.get(fileId);
+		Set<Integer> c = previousCommits.get(fileId);
 		if (c == null) {
-			c = new TreeSet<Integer>();
+			c = new HashSet<Integer>();
 			previousCommits.put(fileId, c);
 		}
 		c.add(commitId);

@@ -8,6 +8,7 @@ import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
 
+import ch.uzh.ifi.seal.changedistiller.ast.FileUtils;
 import ch.uzh.ifi.seal.changedistiller.ast.java.JavaCompilationUtils;
 
 
@@ -17,15 +18,8 @@ public class ZipfTest {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		CompilationUnitDeclaration tree = JavaCompilationUtils.compile(
-				new File("src/edu/ucsc/cs/analysis/ZipfTest.java"), 
-				ClassFileConstants.JDK1_7).getCompilationUnit();
-		tree.traverse(new ASTVisitor() {
-			@Override
-			public boolean visit(TypeDeclaration td, CompilationUnitScope scope) {
-				td.getClass();
-				return true;
-			}
-		}, tree.scope);
+		String content = FileUtils.getContent(new File("SourceMapper.java"));
+		FileRevision fileRevision = new FileRevision(6569, 4822, content);
+		JavaParser.parse(fileRevision);
 	}
 }

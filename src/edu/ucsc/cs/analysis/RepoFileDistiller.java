@@ -40,13 +40,30 @@ public class RepoFileDistiller {
 			ClassFileConstants.JDK1_6, ClassFileConstants.JDK1_5,
 			ClassFileConstants.JDK1_4, ClassFileConstants.JDK1_3,
 			ClassFileConstants.JDK1_2, ClassFileConstants.JDK1_1 };
+	private PreparedStatement fileCopiesStmt;
+	private PreparedStatement fileInfoStmt;
 
-	public RepoFileDistiller(ChangeProcessor reducer, CommitGraph commitGraph) {
+	public RepoFileDistiller(ChangeProcessor reducer, CommitGraph commitGraph) throws SQLException {
 		this.reducer = reducer;
 		this.commitGraph = commitGraph;
+		Connection conn = DatabaseManager.getSQLConnection();
+		fileCopiesStmt = conn.prepareStatement(
+				"SELECT * FROM file_copies WHERE action_id= ?");
+		fileInfoStmt = conn.prepareStatement(
+				"SELECT * FROM files WHERE id = ?");
+	}
+	
+	@Override
+	protected void finalize() throws SQLException {
+		fileInfoStmt.close();
+		fileCopiesStmt.close();
 	}
 
-	public void extractASTDelta(ResultSet action)
+	/**
+	 * 
+	 * @return false when the new file content is note parsable
+	 */
+	public boolean extractASTDelta(ResultSet action)
 			throws SQLException, IOException {
 		String actionType = action.getString("type");
 		int fileId = action.getInt("file_id");
@@ -56,22 +73,21 @@ public class RepoFileDistiller {
 		switch (actionType) {
 		case "C":
 			// the file is created by copying from another file
-			processCopy(fileId, commitId, action.getInt("id"));
-			break;
+			return processCopy(fileId, commitId, action.getInt("id"));
 		case "M":
-			processModify(fileId, commitId);
-			break;
+			return processModify(fileId, commitId);
 		case "D":
 			// a file is deleted
 			processDelete(fileId, commitId);
-			break;
+			return false;
 		case "A":
 			// a file is added
-			processAdd(fileId, commitId);
-			break;
+			return processAdd(fileId, commitId);
 		case "V":
-			processRename(fileId, commitId);
-			break;
+			return processRename(fileId, commitId);
+		default:
+			logger.warning("Unknown action type: " + actionType);
+			return true;
 		}
 	}
 
@@ -96,12 +112,14 @@ public class RepoFileDistiller {
 		}
 	}
 
-	private void processAdd(int fileId, int commitId) throws SQLException,
+	private boolean processAdd(int fileId, int commitId) throws SQLException,
 			IOException {
 		String newContent = FileUtils.getContent(fileId, commitId);
-		if (newContent == null)
+		if (newContent == null) {
 			logger.warning("Content for file " + fileId + " at commit_id "
 					+ commitId + " not found");
+			return false;
+		}
 		else {
 			FileRevision fileRevision = new FileRevision(commitId, fileId,
 					newContent);
@@ -110,6 +128,9 @@ public class RepoFileDistiller {
 			if (changes != null) {
 				reducer.add(changes, fileRevision);
 				fileContentCache.put(fileId, fileRevision);
+				return true;
+			} else {
+				return false;
 			}
 		}
 	}
@@ -131,18 +152,17 @@ public class RepoFileDistiller {
 		}
 	}
 
-	private void processCopy(int fileId, int commitId, int actionId) throws SQLException,
+	/**
+	 * 
+	 * @return false when the new source is not parsable
+	 */
+	private boolean processCopy(int fileId, int commitId, int actionId) throws SQLException,
 			IOException {
-		Connection conn = DatabaseManager.getSQLConnection();
-		PreparedStatement fileCopiesStmt = conn.prepareStatement(
-				"SELECT * FROM file_copies WHERE action_id= ?");
 		fileCopiesStmt.setInt(1, actionId);
 		ResultSet copy = fileCopiesStmt.executeQuery();
 		if (copy.next()) {
 			int sourceFileId = copy.getInt("from_id");
-			
-			PreparedStatement fileInfoStmt = conn.prepareStatement(
-					"SELECT * FROM files WHERE id = " + sourceFileId);
+			fileInfoStmt.setInt(1, sourceFileId);
 			ResultSet fileInfo = fileInfoStmt.executeQuery();
 			fileInfo.next();
 			if (fileInfo.getString("file_name").endsWith(".java")) {
@@ -157,24 +177,23 @@ public class RepoFileDistiller {
 				if (changes != null) {
 					reducer.add(changes, fv);
 					fileContentCache.put(fileId, fv);
-				}				
-			}
-			fileInfoStmt.close();
-			
+					return true;
+				} else {
+					return false;
+				}
+			}			
 		}
-		fileCopiesStmt.close();
+		// unclear if the new source is parsable
+		return true;
 	}
 
 	/**
 	 * When old revision doesn't exist or is invalid, treat it as ADD. When new
 	 * revision doesn't exist or is invalid, keep the old revision in cache
 	 * 
-	 * @param fileId
-	 * @param commitId
-	 * @throws SQLException
-	 * @throws IOException
+	 * @return false if the new source is not parsable
 	 */
-	private void processModify(int fileId, int commitId) throws SQLException,
+	private boolean processModify(int fileId, int commitId) throws SQLException,
 			IOException {
 		int previousCommitId = commitGraph.findPreviousCommitId(fileId,
 				commitId);
@@ -184,13 +203,18 @@ public class RepoFileDistiller {
 				newContent);
 		List<SourceCodeChange> changes = extractDiff(new FileRevision(
 				previousCommitId, fileId, oldContent), fileRevision);
-		if (changes == null || changes.size() == 0) {
-			logger.info("No changes distilled for file " + fileId
-					+ " at commit_id " + commitId + " from previous commit id "
-					+ previousCommitId);
+		if (changes != null) {
+			if (changes.size() > 0) {
+				this.reducer.add(changes, fileRevision);
+				fileContentCache.put(fileId, fileRevision);
+			} else {
+				logger.info("No changes distilled for file " + fileId
+						+ " at commit_id " + commitId + " from previous commit id "
+						+ previousCommitId);				
+			}
+			return true;
 		} else {
-			this.reducer.add(changes, fileRevision);
-			fileContentCache.put(fileId, fileRevision);
+			return false;
 		}
 	}
 
@@ -206,11 +230,14 @@ public class RepoFileDistiller {
 		return oldContent;
 	}
 
-	private void processRename(int fileID, int commitID) throws SQLException,
+	private boolean processRename(int fileID, int commitID) throws SQLException,
 			IOException {
-		processModify(fileID, commitID);
+		return processModify(fileID, commitID);
 	}
 
+	/**
+	 * @return null when it failed to parse newSource
+	 */
 	public static List<SourceCodeChange> extractDiff(FileRevision oldSource,
 			FileRevision newSource) throws IOException {
 		if (oldSource.content == null && newSource.content != null) {

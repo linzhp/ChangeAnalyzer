@@ -27,7 +27,7 @@ public class Commit {
 	private DB mongoConn;
 	private CommitGraph commitGraph;
 	
-	public Commit(int commitID, List<Integer> fildIds, ChangeProcessor processor, CommitGraph commitGraph) {
+	public Commit(int commitID, List<Integer> fildIds, ChangeProcessor processor, CommitGraph commitGraph) throws SQLException {
 		this.id = commitID;
 		logger = LogManager.getLogger();
 		this.includedFileIds = fildIds;
@@ -75,10 +75,16 @@ public class Commit {
 
 				DBCursor cursor = extractedChanges.find(
 						new BasicDBObject("commitId", id).append("fileId", fileId));
+				// Skip extracted changes
 				if (!cursor.hasNext()) {
-					distiller.extractASTDelta(fileAction);
+					if (distiller.extractASTDelta(fileAction)) {
+						// add commit id to the commit graph only when the file revision is
+						// parsable
+						commitGraph.addCommit(fileId, id);						
+					}
+				} else {
+					commitGraph.addCommit(fileId, id);					
 				}
-				commitGraph.addCommit(fileId, id);
 			}
 			stmt1.close();
 			fileTypeStmt.close();

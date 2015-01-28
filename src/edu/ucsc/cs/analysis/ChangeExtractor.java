@@ -102,9 +102,17 @@ public class ChangeExtractor extends ChangeProcessor {
 		if (type == null) {
 			return null;
 		} else if (type.isType() || type.isStructureEntityType()) {
-			return entity.getUniqueName();
+			String uniqueName = entity.getUniqueName();
+			if (uniqueName != null)
+				return uniqueName.replaceAll("\\s+", " ");
+			else
+				return null;
 		} else {
-			return entity.getLabel();
+			String label = entity.getLabel();
+			if (label != null)
+				return label.replaceAll("\\s+", " ");
+			else
+				return null;
 		}
 	}
 

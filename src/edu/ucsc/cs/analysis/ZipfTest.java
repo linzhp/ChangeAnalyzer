@@ -18,8 +18,6 @@ public class ZipfTest {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		String content = FileUtils.getContent(new File("SourceMapper.java"));
-		FileRevision fileRevision = new FileRevision(6569, 4822, content);
-		JavaParser.parse(fileRevision);
+		System.out.print("storeToPartitionIds: HashMap<String,\n                                      List<Integer>>".replaceAll("\\s+", " "));
 	}
 }

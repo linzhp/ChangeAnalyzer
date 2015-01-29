@@ -86,6 +86,7 @@ public class RepoFileDistiller {
 		case "V":
 			return processRename(fileId, commitId);
 		default:
+			// Not able to handle merge types, e.g., MM
 			logger.warning("Unknown action type: " + actionType);
 			return true;
 		}

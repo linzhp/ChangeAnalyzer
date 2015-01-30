@@ -28,7 +28,8 @@ public abstract class RangeVisitor extends ASTVisitor {
 			return method.declarationSourceEnd >= start
 					&& method.declarationSourceStart <= end;
 		} else {
-			return true;
+			// whether to go into the children of statements
+			return false;
 		}
 	}
 

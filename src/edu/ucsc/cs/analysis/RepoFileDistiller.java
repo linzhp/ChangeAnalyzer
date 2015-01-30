@@ -6,7 +6,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -141,15 +140,15 @@ public class RepoFileDistiller {
 		CompilationUnitDeclaration tree = JavaParser.parse(code);
 		SubChangeCollector collector;
 		if (changeType == ChangeType.ADDITIONAL_CLASS) {
-			collector = new InsertClassCollector(0, Integer.MAX_VALUE);
+			collector = new InsertCollector(0, Integer.MAX_VALUE);
 		} else {
-			collector = new DeleteClassCollector(0, Integer.MAX_VALUE);
+			collector = new DeleteCollector(0, Integer.MAX_VALUE);
 		}
 		if (tree != null) {
 			tree.traverse(collector, tree.scope);
 			return collector.getChanges();			
 		} else {
-			return new ArrayList<>();
+			return null;
 		}
 	}
 
@@ -309,10 +308,10 @@ public class RepoFileDistiller {
 			int end = entity.getEndPosition();
 			SubChangeCollector collector = null;
 			if (c instanceof Insert) {
-				collector = new InsertClassCollector(start, end);
+				collector = new InsertCollector(start, end);
 				newAST.traverse(collector, newAST.scope);
 			} else if (c instanceof Delete) {
-				collector = new DeleteClassCollector(start, end);
+				collector = new DeleteCollector(start, end);
 				oldAST.traverse(collector, oldAST.scope);
 			}
 			if (collector != null && collector.getChanges().size() > 0) {
